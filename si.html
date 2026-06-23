@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FORECAST OS — SI/SIL Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #060810;
+    --bg2:       #0a1628;
+    --bg3:       #080f1e;
+    --cyan:      #00d4ff;
+    --cyan-dim:  rgba(0,212,255,0.18);
+    --cyan-glow: rgba(0,212,255,0.08);
+    --bull:      #00ff94;
+    --bear:      #ff3b5c;
+    --amber:     #ffb800;
+    --text:      #c8d8f0;
+    --text-dim:  rgba(200,216,240,0.45);
+    --text-faint:rgba(200,216,240,0.2);
+    --border:    rgba(0,212,255,0.14);
+    --border-hi: rgba(0,212,255,0.35);
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── SCANLINE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── LAYOUT ── */
+  .terminal {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 14px 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-hi);
+  }
+  .hdr-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.22em;
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+  .logo span { color: rgba(0,212,255,0.4); }
+  .vsep { width: 1px; height: 22px; background: var(--border-hi); }
+  .ticker-lbl {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 20px; font-weight: 900;
+    color: #fff; letter-spacing: 0.08em;
+  }
+  .price-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 24px; font-weight: 700;
+    color: #fff; letter-spacing: 0.04em;
+  }
+  .chg-badge {
+    font-size: 12px; font-weight: 600;
+    padding: 3px 10px; border-radius: 3px;
+    letter-spacing: 0.05em;
+  }
+  .chg-up   { color: var(--bull); background: rgba(0,255,148,0.1); border: 1px solid rgba(0,255,148,0.25); }
+  .chg-down { color: var(--bear); background: rgba(255,59,92,0.1);  border: 1px solid rgba(255,59,92,0.25); }
+  .hdr-right { display: flex; align-items: center; gap: 12px; }
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--bull);
+    animation: blink 1.8s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  .timestamp { font-size: 10px; color: var(--text-dim); letter-spacing: 0.07em; }
+  .symbol-selector {
+    background: var(--bg2);
+    border: 1px solid var(--border-hi);
+    border-radius: 4px;
+    color: var(--cyan);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+  }
+
+  /* ── METRIC STRIP ── */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+  .mc {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 9px 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .mc::after {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .mc.cyan-top::after  { background: var(--cyan); }
+  .mc.bull-top::after  { background: var(--bull); }
+  .mc.bear-top::after  { background: var(--bear); }
+  .mc.amber-top::after { background: var(--amber); }
+  .mc-lbl {
+    font-size: 9px; letter-spacing: 0.14em;
+    color: var(--text-dim); text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .mc-val { font-size: 15px; font-weight: 700; color: #e8f0ff; }
+  .mc-sub { font-size: 9px; color: var(--text-faint); margin-top: 3px; }
+
+  /* ── MAIN BODY ── */
+  .body-grid {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    gap: 10px;
+  }
+
+  /* ── CHART PANEL ── */
+  .chart-panel {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+  }
+  .chart-hdr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .chart-title {
+    font-size: 9px; letter-spacing: 0.14em;
+    color: var(--text-dim); text-transform: uppercase;
+  }
+  .legend {
+    display: flex; gap: 14px;
+  }
+  .leg-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 9px; color: var(--text-dim);
+  }
+  .leg-dot {
+    width: 9px; height: 9px; border-radius: 2px;
+  }
+  .chart-canvas-wrap {
+    position: relative;
+    width: 100%; height: 320px;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar { display: flex; flex-direction: column; gap: 8px; }
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+  }
+  .panel-title {
+    font-size: 9px; letter-spacing: 0.14em;
+    color: var(--text-dim); text-transform: uppercase;
+    padding-bottom: 7px; margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Bias bars */
+  .bias-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .bias-row:last-child { margin-bottom: 0; }
+  .bias-tag { font-size: 9px; width: 34px; letter-spacing: 0.05em; }
+  .bar-track {
+    flex: 1; height: 5px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px; overflow: hidden;
+  }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 1.2s ease; }
+  .fill-bull { background: var(--bull); }
+  .fill-bear { background: var(--bear); }
+  .fill-neu  { background: var(--cyan); }
+  .bias-pct { font-size: 10px; font-weight: 700; width: 32px; text-align: right; }
+
+  /* Key levels */
+  .level-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(0,212,255,0.06);
+    font-size: 10px;
+  }
+  .level-row:last-child { border-bottom: none; }
+  .lv-tag { color: var(--text-dim); letter-spacing: 0.06em; }
+  .lv-res { color: var(--bear); font-weight: 700; }
+  .lv-sup { color: var(--bull); font-weight: 700; }
+  .lv-poc { color: var(--cyan); font-weight: 700; }
+  .lv-pvt { color: var(--amber); font-weight: 700; }
+
+  /* Confluence */
+  .conf-line {
+    font-size: 9px; line-height: 2;
+    color: var(--text-dim);
+  }
+  .conf-bull { color: var(--bull); }
+  .conf-bear { color: var(--bear); }
+
+  /* ── TF GRID ── */
+  .tf-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+  .tf-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 9px 10px;
+    text-align: center;
+  }
+  .tf-name {
+    font-size: 8px; letter-spacing: 0.1em;
+    color: var(--text-dim); text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .tf-signal { font-size: 11px; font-weight: 700; margin-bottom: 3px; }
+  .tf-detail { font-size: 8px; color: var(--text-faint); }
+  .sig-bull { color: var(--bull); }
+  .sig-bear { color: var(--bear); }
+  .sig-neu  { color: var(--amber); }
+
+  /* ── BOTTOM BAR ── */
+  .bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .disclaimer {
+    font-size: 8px; letter-spacing: 0.06em;
+    color: rgba(200,216,240,0.2);
+  }
+  .btn-group { display: flex; gap: 8px; align-items: center; }
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.1em;
+    padding: 5px 14px; border-radius: 3px;
+    cursor: pointer; border: none;
+  }
+  .btn-primary {
+    background: var(--cyan);
+    color: #060810; font-weight: 700;
+  }
+  .btn-primary:hover { background: #00eeff; }
+  .btn-outline {
+    background: transparent;
+    color: var(--cyan);
+    border: 1px solid var(--border-hi);
+  }
+  .btn-outline:hover { background: var(--cyan-dim); }
+
+  /* ── SUBSCRIPTION OVERLAY ── */
+  .sub-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(6,8,16,0.92);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .sub-overlay.active { display: flex; }
+  .sub-modal {
+    background: var(--bg2);
+    border: 1px solid var(--border-hi);
+    border-radius: 8px;
+    padding: 36px 40px;
+    max-width: 520px;
+    width: 90%;
+    text-align: center;
+  }
+  .sub-logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.2em; color: var(--cyan);
+    margin-bottom: 8px;
+  }
+  .sub-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 20px; font-weight: 700;
+    color: #fff; margin-bottom: 6px;
+  }
+  .sub-sub { font-size: 11px; color: var(--text-dim); margin-bottom: 28px; line-height: 1.7; }
+  .plan-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+  .plan-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 14px 10px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .plan-card:hover, .plan-card.selected {
+    border-color: var(--cyan);
+    background: var(--cyan-glow);
+  }
+  .plan-card.featured { border-color: var(--amber); }
+  .plan-name { font-size: 9px; letter-spacing: 0.12em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px; }
+  .plan-price { font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 3px; }
+  .plan-period { font-size: 9px; color: var(--text-dim); margin-bottom: 8px; }
+  .plan-badge {
+    display: inline-block; font-size: 8px; letter-spacing: 0.1em;
+    padding: 2px 8px; border-radius: 2px;
+    background: rgba(255,184,0,0.15); color: var(--amber);
+    border: 1px solid rgba(255,184,0,0.3);
+  }
+  .plan-features { font-size: 9px; color: var(--text-dim); line-height: 1.9; text-align: left; margin-top: 8px; }
+  .sub-trial { font-size: 10px; color: var(--bull); margin-bottom: 14px; }
+  .sub-close { font-size: 9px; color: var(--text-faint); cursor: pointer; text-decoration: underline; margin-top: 10px; display: block; }
+  .sub-close:hover { color: var(--text-dim); }
+
+  /* ── TICKER TAPE ── */
+  .ticker-tape {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    height: 28px;
+    display: flex;
+    align-items: center;
+  }
+  .tape-label {
+    font-size: 8px; letter-spacing: 0.14em;
+    color: var(--cyan); text-transform: uppercase;
+    padding: 0 12px; border-right: 1px solid var(--border);
+    white-space: nowrap; height: 100%;
+    display: flex; align-items: center;
+    background: var(--cyan-glow);
+  }
+  .tape-scroll-wrap { flex: 1; overflow: hidden; }
+  .tape-scroll {
+    display: flex; align-items: center;
+    white-space: nowrap;
+    animation: scroll-tape 40s linear infinite;
+  }
+  @keyframes scroll-tape {
+    0%   { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+  }
+  .tape-item {
+    font-size: 10px; padding: 0 20px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .tape-sym { color: #fff; font-weight: 600; }
+  .tape-px  { color: var(--text); }
+  .tape-up  { color: var(--bull); }
+  .tape-dn  { color: var(--bear); }
+
+  @media (max-width: 900px) {
+    .metrics { grid-template-columns: repeat(3, 1fr); }
+    .body-grid { grid-template-columns: 1fr; }
+    .tf-grid { grid-template-columns: repeat(3, 1fr); }
+    .plan-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── SUBSCRIPTION OVERLAY ── -->
+<div class="sub-overlay" id="subOverlay">
+  <div class="sub-modal">
+    <div class="sub-logo">FORECAST OS</div>
+    <div class="sub-title">Unlock Full Access</div>
+    <div class="sub-sub">
+      Institutional-grade futures forecasting.<br>
+      Start free — no credit card required for trial.
+    </div>
+    <div class="plan-grid">
+      <div class="plan-card" onclick="selectPlan(this)">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">$12</div>
+        <div class="plan-period">/ year · 1 symbol</div>
+        <div class="plan-features">
+          ✓ 1 Futures symbol<br>
+          ✓ Forecast cone<br>
+          ✓ Key levels<br>
+          ✓ Daily bias
+        </div>
+      </div>
+      <div class="plan-card featured" onclick="selectPlan(this)">
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">$24</div>
+        <div class="plan-period">/ year · 2 symbols</div>
+        <div class="plan-badge">MOST POPULAR</div>
+        <div class="plan-features">
+          ✓ 2 Futures symbols<br>
+          ✓ All timeframes<br>
+          ✓ Confluence engine<br>
+          ✓ Swing outlook
+        </div>
+      </div>
+      <div class="plan-card" onclick="selectPlan(this)">
+        <div class="plan-name">Full Access</div>
+        <div class="plan-price">$48</div>
+        <div class="plan-period">/ year · all symbols</div>
+        <div class="plan-features">
+          ✓ NQ · ES · MCL<br>
+          ✓ Gold · Silver<br>
+          ✓ Live data feed<br>
+          ✓ Stream mode
+        </div>
+      </div>
+    </div>
+    <div class="sub-trial">✦ 7-DAY FREE TRIAL — NO CARD REQUIRED ✦</div>
+    <button class="btn btn-primary" onclick="startTrial()" style="width:100%;font-size:12px;padding:12px;">
+      START FREE TRIAL →
+    </button>
+    <span class="sub-close" onclick="closeSub()">Already subscribed? Sign in</span>
+  </div>
+</div>
+
+<!-- ── MAIN TERMINAL ── -->
+<div class="terminal">
+
+  <!-- TICKER TAPE -->
+  <div class="ticker-tape">
+    <div class="tape-label">FUTURES</div>
+    <div class="tape-scroll-wrap">
+      <div class="tape-scroll" id="tapeScroll"></div>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="logo">Forecast <span>OS</span></div>
+      <div class="vsep"></div>
+      <span class="ticker-lbl" id="tickerLbl">SI / SIL</span>
+      <span class="price-display" id="priceDisplay">—</span>
+      <span class="chg-badge chg-up" id="chgBadge">+0.00%</span>
+    </div>
+    <div class="hdr-right">
+      <select class="symbol-selector" id="symbolSel" onchange="switchSymbol(this.value)">
+        <option value="SI">SI / SIL — Silver Futures</option>
+        <option value="NQ">NQ / MNQ — Nasdaq 100 ⬤ Pro</option>
+        <option value="MCL">MCL — Micro Crude Oil ⬤ Pro</option>
+        <option value="ES">ES / MES — S&amp;P 500 ⬤ Pro</option>
+        <option value="GC">GC — Gold Futures ⬤ Full</option>
+      </select>
+      <span class="timestamp" id="timestamp">--:--:-- CT</span>
+      <div class="live-dot"></div>
+    </div>
+  </div>
+
+  <!-- METRICS STRIP -->
+  <div class="metrics">
+    <div class="mc cyan-top">
+      <div class="mc-lbl">Bias Score</div>
+      <div class="mc-val" id="biasScore" style="color:var(--bull)">—</div>
+      <div class="mc-sub">Composite signal</div>
+    </div>
+    <div class="mc bull-top">
+      <div class="mc-lbl">Session High Target</div>
+      <div class="mc-val" id="fcHi" style="color:var(--bear)">—</div>
+      <div class="mc-sub">Resistance zone top</div>
+    </div>
+    <div class="mc bear-top">
+      <div class="mc-lbl">Session Low Target</div>
+      <div class="mc-val" id="fcLo" style="color:var(--bull)">—</div>
+      <div class="mc-sub">Support zone floor</div>
+    </div>
+    <div class="mc amber-top">
+      <div class="mc-lbl">Expected Range</div>
+      <div class="mc-val" id="rng">—</div>
+      <div class="mc-sub">Points today</div>
+    </div>
+    <div class="mc cyan-top">
+      <div class="mc-lbl">Volume Signal</div>
+      <div class="mc-val" id="volSig">—</div>
+      <div class="mc-sub">vs 20-day avg</div>
+    </div>
+    <div class="mc cyan-top">
+      <div class="mc-lbl">ATR (14)</div>
+      <div class="mc-val" id="atrVal">—</div>
+      <div class="mc-sub">Daily volatility</div>
+    </div>
+  </div>
+
+  <!-- BODY: CHART + SIDEBAR -->
+  <div class="body-grid">
+    <div class="chart-panel">
+      <div class="chart-hdr">
+        <span class="chart-title">Probability Forecast Cone — Intraday → 4-Day Swing</span>
+        <div class="legend">
+          <span class="leg-item"><span class="leg-dot" style="background:rgba(0,255,148,0.55)"></span>Bull zone</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#00d4ff"></span>Base case</span>
+          <span class="leg-item"><span class="leg-dot" style="background:rgba(255,59,92,0.55)"></span>Bear zone</span>
+          <span class="leg-item"><span class="leg-dot" style="background:rgba(0,212,255,0.18)"></span>68% band</span>
+        </div>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="forecastChart"
+          role="img"
+          aria-label="Silver futures probability forecast cone showing bull, base case, and bear price zones projecting from current price across intraday and 4-day swing horizon">
+          SI/SIL futures forecast: base case, bull zone, and bear zone projections across session and swing timeframes.
+        </canvas>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <!-- DIRECTIONAL BIAS -->
+      <div class="panel">
+        <div class="panel-title">Directional Bias</div>
+        <div class="bias-row">
+          <span class="bias-tag" style="color:var(--bull)">BULL</span>
+          <div class="bar-track"><div class="bar-fill fill-bull" id="bullBar" style="width:0%"></div></div>
+          <span class="bias-pct" style="color:var(--bull)" id="bullPct">—</span>
+        </div>
+        <div class="bias-row">
+          <span class="bias-tag" style="color:var(--bear)">BEAR</span>
+          <div class="bar-track"><div class="bar-fill fill-bear" id="bearBar" style="width:0%"></div></div>
+          <span class="bias-pct" style="color:var(--bear)" id="bearPct">—</span>
+        </div>
+        <div class="bias-row">
+          <span class="bias-tag" style="color:var(--cyan)">NEU</span>
+          <div class="bar-track"><div class="bar-fill fill-neu" id="neuBar" style="width:0%"></div></div>
+          <span class="bias-pct" style="color:var(--cyan)" id="neuPct">—</span>
+        </div>
+      </div>
+
+      <!-- KEY LEVELS -->
+      <div class="panel">
+        <div class="panel-title">Key Levels</div>
+        <div id="levelsPanel"></div>
+      </div>
+
+      <!-- CONFLUENCE -->
+      <div class="panel" style="flex:1">
+        <div class="panel-title">Confluence Checklist</div>
+        <div id="confPanel"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIMEFRAME GRID -->
+  <div class="tf-grid">
+    <div class="tf-card">
+      <div class="tf-name">Morning Prep</div>
+      <div class="tf-signal" id="tf0">—</div>
+      <div class="tf-detail" id="tf0d">Daily bias</div>
+    </div>
+    <div class="tf-card">
+      <div class="tf-name">Intraday</div>
+      <div class="tf-signal" id="tf1">—</div>
+      <div class="tf-detail" id="tf1d">Session flow</div>
+    </div>
+    <div class="tf-card">
+      <div class="tf-name">Swing (3-5D)</div>
+      <div class="tf-signal" id="tf2">—</div>
+      <div class="tf-detail" id="tf2d">Multi-day view</div>
+    </div>
+    <div class="tf-card">
+      <div class="tf-name">Trend MA</div>
+      <div class="tf-signal" id="tf3">—</div>
+      <div class="tf-detail" id="tf3d">20 / 50 / 200</div>
+    </div>
+    <div class="tf-card">
+      <div class="tf-name">Momentum</div>
+      <div class="tf-signal" id="tf4">—</div>
+      <div class="tf-detail" id="tf4d">RSI + MACD</div>
+    </div>
+    <div class="tf-card">
+      <div class="tf-name">Macro</div>
+      <div class="tf-signal" id="tf5">—</div>
+      <div class="tf-detail" id="tf5d">Fed + events</div>
+    </div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottom-bar">
+    <span class="disclaimer" id="disclaimer">
+      FORECAST OS v1.4 · SIMULATED DATA — LIVE FEED COMING SOON · NOT FINANCIAL ADVICE · FOR EDUCATIONAL USE ONLY
+    </span>
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="refreshData()">↺ REFRESH</button>
+      <button class="btn btn-primary" onclick="document.getElementById('subOverlay').classList.add('active')">SUBSCRIBE ✦</button>
+    </div>
+  </div>
+
+</div><!-- /terminal -->
+
+<script>
+// ── SYMBOL CONFIG ──────────────────────────────────────────────
+const SYMBOLS = {
+  GC:  { label:'GC / MGC', name:'Gold Futures',            base:4157,  atr:55,   tickSize:0.1  },
+  SI:  { label:'SI',       name:'Silver Futures',          base:32.80, atr:0.95, tickSize:0.005, decimals:3 },
+  ES:  { label:'ES / MES', name:'S&P 500 E-Mini Futures',  base:5920,  atr:68,   tickSize:0.25 },
+  NQ:  { label:'NQ / MNQ', name:'Nasdaq 100 Futures',      base:21840, atr:310,  tickSize:0.25 },
+  MCL: { label:'MCL',      name:'Micro Crude Oil',         base:75.40, atr:1.85, tickSize:0.01, decimals:2 },
+};
+
+const LOCKED = ['NQ','ES','MCL','GC'];
+let currentSymbol = 'SI';
+let chartInstance = null;
+let priceNow = SYMBOLS.SI.base;
+
+// ── TAPE DATA ──────────────────────────────────────────────────
+const tapeSymbols = [
+  {sym:'NQ', base:21840}, {sym:'ES', base:5920},
+  {sym:'MCL', base:75.40, dec:2}, {sym:'GC', base:4157},
+  {sym:'SI', base:32.80, dec:3}, {sym:'RTY', base:2210},
+  {sym:'YM', base:43800},
+];
+
+function buildTape() {
+  const tape = document.getElementById('tapeScroll');
+  tape.innerHTML = tapeSymbols.map(s => {
+    const chg = (Math.random() - 0.47) * (s.base * 0.008);
+    const px = s.base + chg;
+    const pct = (chg / s.base * 100).toFixed(2);
+    const up = chg >= 0;
+    const dec = s.dec || 2;
+    return `<span class="tape-item">
+      <span class="tape-sym">${s.sym}</span>
+      <span class="tape-px">${px.toFixed(dec)}</span>
+      <span class="${up ? 'tape-up' : 'tape-dn'}">${up ? '▲' : '▼'}${Math.abs(pct)}%</span>
+    </span>`;
+  }).join('<span class="tape-item" style="color:var(--border-hi)">|</span>');
+}
+
+// ── FORECAST ENGINE ────────────────────────────────────────────
+function buildForecast(base, atr) {
+  const labels = ['NOW','1H','2H','4H','EOD','D+1','D+2','D+3','D+4'];
+  const drift = 0.00035;
+  const volFactor = atr / base;
+  const base_c=[], bull=[], bear=[], hi1=[], lo1=[], hi2=[], lo2=[];
+  for (let i = 0; i <= 8; i++) {
+    const t = i;
+    const mu = base * (1 + drift * t);
+    const sigma = base * volFactor * Math.sqrt(t + 0.25);
+    base_c.push(+mu.toFixed(2));
+    bull.push(+(mu + sigma * 1.28).toFixed(2));
+    bear.push(+(mu - sigma * 1.28).toFixed(2));
+    hi1.push(+(mu + sigma * 0.67).toFixed(2));
+    lo1.push(+(mu - sigma * 0.67).toFixed(2));
+    hi2.push(+(mu + sigma * 1.96).toFixed(2));
+    lo2.push(+(mu - sigma * 1.96).toFixed(2));
+  }
+  return { labels, base_c, bull, bear, hi1, lo1, hi2, lo2 };
+}
+
+// ── KEY LEVELS ─────────────────────────────────────────────────
+function buildLevels(base, atr) {
+  return [
+    { tag:'R3', val: base + atr*1.4,  cls:'lv-res' },
+    { tag:'R2', val: base + atr*0.85, cls:'lv-res' },
+    { tag:'R1', val: base + atr*0.38, cls:'lv-res' },
+    { tag:'POC',val: base + atr*0.06, cls:'lv-poc' },
+    { tag:'PVT',val: base,             cls:'lv-pvt' },
+    { tag:'S1', val: base - atr*0.34, cls:'lv-sup' },
+    { tag:'S2', val: base - atr*0.78, cls:'lv-sup' },
+    { tag:'S3', val: base - atr*1.35, cls:'lv-sup' },
+  ];
+}
+
+// ── BIAS ENGINE ────────────────────────────────────────────────
+function computeBias() {
+  const scenarios = [
+    { bull:64, bear:22, neu:14, score:'BULLISH',  col:'var(--bull)' },
+    { bull:55, bear:30, neu:15, score:'BULLISH',  col:'var(--bull)' },
+    { bull:28, bear:58, neu:14, score:'BEARISH',  col:'var(--bear)' },
+    { bull:35, bear:40, neu:25, score:'NEUTRAL',  col:'var(--amber)' },
+  ];
+  return scenarios[Math.floor(Math.random() * scenarios.length)];
+}
+
+// ── CHART BUILDER ──────────────────────────────────────────────
+function buildChart(fc) {
+  const ctx = document.getElementById('forecastChart').getContext('2d');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  const yMin = Math.min(...fc.lo2) - (Math.max(...fc.hi2) - Math.min(...fc.lo2)) * 0.08;
+  const yMax = Math.max(...fc.hi2) + (Math.max(...fc.hi2) - Math.min(...fc.lo2)) * 0.08;
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: fc.labels,
+      datasets: [
+        {
+          label: '95% lo',
+          data: fc.lo2, fill: false,
+          borderColor: 'transparent', pointRadius: 0, tension: 0.45
+        },
+        {
+          label: 'Bull Zone',
+          data: fc.bull,
+          fill: '-1',
+          backgroundColor: 'rgba(0,255,148,0.07)',
+          borderColor: 'rgba(0,255,148,0.4)',
+          borderWidth: 1.5,
+          borderDash: [5,4],
+          pointRadius: 0, tension: 0.45
+        },
+        {
+          label: 'Inner hi',
+          data: fc.hi1, fill: false,
+          borderColor: 'transparent', pointRadius: 0, tension: 0.45
+        },
+        {
+          label: '68% Band',
+          data: fc.lo1,
+          fill: '-1',
+          backgroundColor: 'rgba(0,212,255,0.10)',
+          borderColor: 'transparent',
+          pointRadius: 0, tension: 0.45
+        },
+        {
+          label: 'Base Case',
+          data: fc.base_c,
+          fill: false,
+          borderColor: '#00d4ff',
+          borderWidth: 2.5,
+          pointRadius: [7, 3, 3, 3, 3, 3, 3, 3, 3],
+          pointBackgroundColor: '#00d4ff',
+          pointBorderColor: '#060810',
+          pointBorderWidth: 1.5,
+          tension: 0.45
+        },
+        {
+          label: 'Bear Zone',
+          data: fc.bear,
+          fill: 1,
+          backgroundColor: 'rgba(255,59,92,0.07)',
+          borderColor: 'rgba(255,59,92,0.4)',
+          borderWidth: 1.5,
+          borderDash: [5,4],
+          pointRadius: 0, tension: 0.45
+        },
+        {
+          label: '95% hi',
+          data: fc.hi2, fill: false,
+          borderColor: 'transparent', pointRadius: 0, tension: 0.45
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0d1e38',
+          borderColor: 'rgba(0,212,255,0.35)',
+          borderWidth: 1,
+          titleColor: '#00d4ff',
+          bodyColor: '#c8d8f0',
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+          bodyFont: { family: 'JetBrains Mono', size: 11 },
+          callbacks: {
+            label: ctx => {
+              if (['95% lo','Inner hi','95% hi'].includes(ctx.dataset.label)) return null;
+              const dec = SYMBOLS[currentSymbol].decimals || 2;
+              return ' ' + ctx.dataset.label + ': ' + ctx.raw.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(0,212,255,0.06)', lineWidth: 1 },
+          ticks: { color: 'rgba(0,212,255,0.5)', font: { family:'JetBrains Mono', size:10 }, maxRotation: 0 }
+        },
+        y: {
+          position: 'right',
+          min: yMin, max: yMax,
+          grid: { color: 'rgba(0,212,255,0.06)', lineWidth: 1 },
+          ticks: {
+            color: 'rgba(0,212,255,0.5)',
+            font: { family:'JetBrains Mono', size:10 },
+            callback: v => {
+              const dec = SYMBOLS[currentSymbol].decimals || 2;
+              return v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── MAIN RENDER ────────────────────────────────────────────────
+function render(sym) {
+  const cfg = SYMBOLS[sym];
+  const dec = cfg.decimals || 2;
+  const price = cfg.base + (Math.random() - 0.47) * cfg.atr * 0.4;
+  const chgPct = (Math.random() - 0.45) * 1.6;
+  const isUp = chgPct >= 0;
+  priceNow = price;
+
+  // Header
+  document.getElementById('tickerLbl').textContent = cfg.label;
+  document.getElementById('priceDisplay').textContent = price.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  const chgEl = document.getElementById('chgBadge');
+  chgEl.textContent = (isUp ? '+' : '') + chgPct.toFixed(2) + '%';
+  chgEl.className = 'chg-badge ' + (isUp ? 'chg-up' : 'chg-down');
+
+  // Timestamp
+  const now = new Date();
+  document.getElementById('timestamp').textContent =
+    now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) + '  CT';
+
+  // Forecast
+  const fc = buildForecast(price, cfg.atr);
+  const fcHi = Math.max(...fc.bull);
+  const fcLo = Math.min(...fc.bear);
+  const rng = fcHi - fcLo;
+
+  document.getElementById('fcHi').textContent = fcHi.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  document.getElementById('fcLo').textContent = fcLo.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  document.getElementById('rng').textContent = rng.toFixed(dec) + ' pts';
+  document.getElementById('atrVal').textContent = cfg.atr.toFixed(dec) + ' pts';
+
+  const volOver = Math.random() > 0.45;
+  const volPct = Math.round(Math.random() * 50 + 10);
+  const volEl = document.getElementById('volSig');
+  volEl.textContent = volOver ? 'HIGH +' + volPct + '%' : 'NORMAL';
+  volEl.style.color = volOver ? 'var(--amber)' : 'var(--bull)';
+
+  // Bias
+  const bias = computeBias();
+  document.getElementById('biasScore').textContent = bias.score;
+  document.getElementById('biasScore').style.color = bias.col;
+  document.getElementById('bullBar').style.width = bias.bull + '%';
+  document.getElementById('bearBar').style.width = bias.bear + '%';
+  document.getElementById('neuBar').style.width = bias.neu + '%';
+  document.getElementById('bullPct').textContent = bias.bull + '%';
+  document.getElementById('bearPct').textContent = bias.bear + '%';
+  document.getElementById('neuPct').textContent = bias.neu + '%';
+
+  // Levels
+  const levels = buildLevels(price, cfg.atr);
+  document.getElementById('levelsPanel').innerHTML = levels.map(l =>
+    `<div class="level-row">
+      <span class="lv-tag">${l.tag}</span>
+      <span class="${l.cls}">${l.val.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec})}</span>
+    </div>`
+  ).join('');
+
+  // Confluence
+  const bullConf = bias.score === 'BULLISH';
+  const items = [
+    { txt: 'Price ' + (isUp?'above':'below') + ' VWAP ' + (isUp?'+':'-') + Math.round(cfg.atr*0.08) + 'pts', bull: isUp },
+    { txt: (bullConf?'20MA > 50MA (bull cross)':'50MA > 20MA (bear cross)'), bull: bullConf },
+    { txt: 'RSI 14: ' + Math.round(50 + (Math.random()-0.4)*30) + (bullConf?' — trending':'  — watch OB'), bull: bullConf },
+    { txt: 'Volume ' + (volOver?'> avg +'+volPct+'% (inst. activity)':'at avg (neutral)'), bull: volOver },
+    { txt: 'Industrial demand supporting silver', bull: true },
+    { txt: 'High beta to gold — amplified moves', bull: false },
+  ];
+  document.getElementById('confPanel').innerHTML = items.map(i =>
+    `<div class="conf-line ${i.bull?'conf-bull':'conf-bear'}">${i.bull?'▲':'▼'} ${i.txt}</div>`
+  ).join('');
+
+  // TF Cards
+  const tfCards = [
+    { sig: bias.score,   cls: bias.score==='BULLISH'?'sig-bull':bias.score==='BEARISH'?'sig-bear':'sig-neu', detail: isUp?'Industrial + safe-haven bid':'Dual pressure selling' },
+    { sig: isUp?'LONG BIAS':'SHORT BIAS', cls: isUp?'sig-bull':'sig-bear', detail: isUp?'Breakout continuation':'Support test' },
+    { sig: bias.score==='BEARISH'?'NEUTRAL':'BULLISH', cls: bias.score==='BEARISH'?'sig-neu':'sig-bull', detail: 'Fed event risk present' },
+    { sig: bullConf?'BULLISH':'BEARISH', cls: bullConf?'sig-bull':'sig-bear', detail: bullConf?'Price > all MAs':'Price < 20MA' },
+    { sig: 'CAUTION', cls: 'sig-neu', detail: 'RSI approaching OB zone' },
+    { sig: 'MIXED',   cls: 'sig-neu', detail: 'Iran deal vs Fed hike' },
+  ];
+  tfCards.forEach((t, i) => {
+    const el = document.getElementById('tf' + i);
+    el.textContent = t.sig;
+    el.className = 'tf-signal ' + t.cls;
+    document.getElementById('tf' + i + 'd').textContent = t.detail;
+  });
+
+  // Chart
+  buildChart(fc);
+}
+
+// ── SYMBOL SWITCH ──────────────────────────────────────────────
+function switchSymbol(sym) {
+  if (LOCKED.includes(sym)) {
+    document.getElementById('symbolSel').value = currentSymbol;
+    document.getElementById('subOverlay').classList.add('active');
+    return;
+  }
+  currentSymbol = sym;
+  render(sym);
+}
+
+// ── REFRESH ────────────────────────────────────────────────────
+function refreshData() {
+  render(currentSymbol);
+  buildTape();
+}
+
+// ── SUBSCRIPTION MODAL ─────────────────────────────────────────
+function selectPlan(el) {
+  document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function startTrial() {
+  alert('Trial coming soon! Connect your email via the stream chat to get early access.');
+  closeSub();
+}
+function closeSub() {
+  document.getElementById('subOverlay').classList.remove('active');
+}
+
+// ── CLOCK TICK ────────────────────────────────────────────────
+function tickClock() {
+  const now = new Date();
+  document.getElementById('timestamp').textContent =
+    now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) + '  CT';
+}
+
+// ── INIT ───────────────────────────────────────────────────────
+buildTape();
+render('SI');
+setInterval(tickClock, 1000);
+setInterval(() => {
+  buildTape();
+}, 45000);
+</script>
+</body>
+</html>
