@@ -146,9 +146,50 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .nav-link:hover{color:var(--cyan);border-color:var(--border-hi);}
 
 @media(max-width:1000px){.main-grid{grid-template-columns:1fr;}}
+
+  /* ── TOP NAV ── */
+  .top-nav{
+    position:fixed;top:0;left:0;right:0;z-index:1000;
+    background:rgba(6,8,16,0.95);
+    border-bottom:1px solid rgba(0,212,255,0.2);
+    backdrop-filter:blur(10px);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 28px;height:52px;
+  }
+  .top-nav-logo{
+    font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;
+    letter-spacing:0.2em;color:#00d4ff;text-decoration:none;
+  }
+  .top-nav-links{display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
+  .top-nav-link{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;letter-spacing:0.1em;
+    color:rgba(200,216,240,0.6);text-decoration:none;
+    padding:6px 12px;border-radius:3px;
+    border:1px solid transparent;
+    transition:all 0.15s;white-space:nowrap;
+  }
+  .top-nav-link:hover{color:#00d4ff;border-color:rgba(0,212,255,0.3);background:rgba(0,212,255,0.06);}
+  .top-nav-link.active{color:#00d4ff;border-color:rgba(0,212,255,0.3);background:rgba(0,212,255,0.06);}
+  .top-nav-link.highlight{color:#00ff94;border-color:rgba(0,255,148,0.3);background:rgba(0,255,148,0.06);}
+
 </style>
 </head>
 <body>
+
+<nav class="top-nav" role="navigation" aria-label="Main navigation">
+  <a href="index.html" class="top-nav-logo">FORECAST OS</a>
+  <div class="top-nav-links">
+    <a href="briefing.html" class="top-nav-link active">⬡ BRIEFING</a>
+    <a href="nq.html" class="top-nav-link ">NQ/MNQ</a>
+    <a href="es.html" class="top-nav-link ">ES/MES</a>
+    <a href="mcl.html" class="top-nav-link ">MCL</a>
+    <a href="gc.html" class="top-nav-link ">GOLD</a>
+    <a href="si.html" class="top-nav-link ">SILVER</a>
+    <a href="index.html" class="top-nav-link ">← HUB</a>
+    
+  </div>
+</nav>
 <div class="terminal">
 
   <!-- TICKER TAPE -->

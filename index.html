@@ -222,6 +222,19 @@ footer a:hover{color:var(--cyan);}
 </head>
 <body>
 
+<nav class="top-nav" role="navigation" aria-label="Main navigation">
+  <a href="index.html" class="top-nav-logo">FORECAST OS</a>
+  <div class="top-nav-links">
+    <a href="briefing.html" class="top-nav-link highlight">⬡ BRIEFING</a>
+    <a href="nq.html"       class="top-nav-link">NQ/MNQ</a>
+    <a href="es.html"       class="top-nav-link">ES/MES</a>
+    <a href="mcl.html"      class="top-nav-link">MCL</a>
+    <a href="gc.html"       class="top-nav-link">GOLD</a>
+    <a href="si.html"       class="top-nav-link">SILVER</a>
+    <a href="#pricing"      class="top-nav-link">SUBSCRIBE</a>
+  </div>
+</nav>
+
 <!-- ── HERO ── -->
 <section class="hero">
   <div class="hero-grid"></div>
@@ -338,13 +351,23 @@ footer a:hover{color:var(--cyan);}
       </div>
     </a>
 
-    <div class="terminal-card" style="cursor:default;border-style:dashed;display:flex;align-items:center;justify-content:center;min-height:200px;">
-      <div style="text-align:center;padding:20px">
-        <div style="font-size:28px;margin-bottom:10px;opacity:0.3">+</div>
-        <div style="font-size:11px;color:var(--dim);font-weight:700">More Coming</div>
-        <div style="font-size:9px;color:var(--faint);margin-top:4px">RTY · YM · BTC · CL</div>
+    <a href="briefing.html" class="terminal-card">
+      <div class="tc-preview" style="background:linear-gradient(135deg,#08100e,#0a1a14)">
+        <div class="tc-preview-inner">
+          <div class="tc-symbol" style="color:#a855f7;font-size:22px;">⬡ BRIEFING</div>
+          <div class="tc-name">AI Morning Briefing</div>
+          <div class="tc-price" style="color:#a855f7;font-size:14px;">Auto-updates every 30min</div>
+        </div>
       </div>
-    </div>
+      <div class="tc-body">
+        <div class="tc-title">Morning Briefing Terminal</div>
+        <div class="tc-desc">AI-generated pre-market + NY Open analysis · Session bias · Economic events · Schedule</div>
+        <div class="tc-footer">
+          <span class="tc-tag tag-free">FREE</span>
+          <span class="tc-arrow">→</span>
+        </div>
+      </div>
+    </a>
   </div>
 </div>
 
@@ -445,11 +468,12 @@ footer a:hover{color:var(--cyan);}
 <footer>
   <div style="font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;color:rgba(0,212,255,0.6);letter-spacing:0.2em;margin-bottom:12px">FORECAST OS</div>
   <div>
-    <a href="nq.html">NQ Terminal</a> · 
-    <a href="es.html">ES Terminal</a> · 
-    <a href="mcl.html">MCL Terminal</a> · 
-    <a href="gc.html">Gold Terminal</a> · 
-    <a href="si.html">Silver Terminal</a>
+    <a href="briefing.html">Briefing</a> · 
+    <a href="nq.html">NQ</a> · 
+    <a href="es.html">ES</a> · 
+    <a href="mcl.html">MCL</a> · 
+    <a href="gc.html">Gold</a> · 
+    <a href="si.html">Silver</a>
   </div>
   <div style="margin-top:12px">
     © 2026 Texas Wedge Ventures · Forecast OS · 
