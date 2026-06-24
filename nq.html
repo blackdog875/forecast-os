@@ -220,16 +220,27 @@
   /* Key levels */
   .level-row {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 4px 0;
-    border-bottom: 1px solid rgba(0,212,255,0.06);
+    padding: 6px 8px;
+    border-radius: 3px;
+    margin-bottom: 3px;
+    border: 1px solid transparent;
+    transition: background 0.15s;
     font-size: 15px;
   }
-  .level-row:last-child { border-bottom: none; }
-  .lv-tag { color: var(--text-dim); letter-spacing: 0.06em; font-size: 13px; }
-  .lv-res { color: var(--bear); font-weight: 700; }
-  .lv-sup { color: var(--bull); font-weight: 700; }
-  .lv-poc { color: var(--cyan); font-weight: 700; }
-  .lv-pvt { color: var(--amber); font-weight: 700; }
+  .level-row:last-child { margin-bottom: 0; }
+  .level-row.row-res { background: rgba(255,59,92,0.06); border-color: rgba(255,59,92,0.15); }
+  .level-row.row-sup { background: rgba(0,255,148,0.06); border-color: rgba(0,255,148,0.15); }
+  .level-row.row-poc { background: rgba(0,212,255,0.06); border-color: rgba(0,212,255,0.2); }
+  .level-row.row-pvt { background: rgba(255,184,0,0.06); border-color: rgba(255,184,0,0.2); }
+  .lv-tag { letter-spacing: 0.1em; font-size: 12px; font-weight: 700; padding: 2px 7px; border-radius: 3px; }
+  .lv-tag-res { color: var(--bear); background: rgba(255,59,92,0.15); border: 1px solid rgba(255,59,92,0.3); }
+  .lv-tag-sup { color: var(--bull); background: rgba(0,255,148,0.12); border: 1px solid rgba(0,255,148,0.3); }
+  .lv-tag-poc { color: var(--cyan); background: rgba(0,212,255,0.1);  border: 1px solid rgba(0,212,255,0.3); }
+  .lv-tag-pvt { color: var(--amber);background: rgba(255,184,0,0.1);  border: 1px solid rgba(255,184,0,0.3); }
+  .lv-res { color: var(--bear); font-weight: 700; font-size: 15px; }
+  .lv-sup { color: var(--bull); font-weight: 700; font-size: 15px; }
+  .lv-poc { color: var(--cyan); font-weight: 700; font-size: 15px; }
+  .lv-pvt { color: var(--amber);font-weight: 700; font-size: 15px; }
 
   /* Confluence */
   .conf-line {
@@ -707,7 +718,7 @@
 
       <!-- KEY LEVELS -->
       <div class="panel">
-        <div class="panel-title">Key Levels</div>
+        <div class="panel-title" style="color:#fff;letter-spacing:0.18em;">⬡ <span style="color:var(--bear)">R</span><span style="color:var(--amber)">E</span><span style="color:var(--bull)">S</span> <span style="color:#fff">·</span> <span style="color:var(--cyan)">KEY LEVELS</span> <span style="color:#fff">·</span> <span style="color:var(--bull)">S</span><span style="color:var(--amber)">U</span><span style="color:var(--bear)">P</span> ⬡</div>
         <div id="levelsPanel"></div>
       </div>
 
@@ -1028,8 +1039,10 @@ function render(sym) {
   // Levels
   const levels = buildLevels(price, cfg.atr);
   document.getElementById('levelsPanel').innerHTML = levels.map(l =>
-    `<div class="level-row">
-      <span class="lv-tag">${l.tag}</span>
+    const rowCls = l.cls==='lv-res'?'row-res':l.cls==='lv-sup'?'row-sup':l.cls==='lv-poc'?'row-poc':'row-pvt';
+    const tagCls = l.cls==='lv-res'?'lv-tag-res':l.cls==='lv-sup'?'lv-tag-sup':l.cls==='lv-poc'?'lv-tag-poc':'lv-tag-pvt';
+    `<div class="level-row ${rowCls}">
+      <span class="lv-tag ${tagCls}">${l.tag}</span>
       <span class="${l.cls}">${l.val.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec})}</span>
     </div>`
   ).join('');
@@ -1164,12 +1177,6 @@ setInterval(() => {
 </script>
 
 <!-- POTUS ALERT SYSTEM — EMBEDDED -->
-<script>
-/**
- * FORECAST OS — POTUS Alert System v1.0
- * ───────────────────────────────────────────────────────────────
- * Drop into ANY terminal with one line before </body>:
- *   <script src="potus-alert.js"></script>
  *
  * THREE ALERT LEVELS:
  *   Level 1 — HEADS UP     (yellow corner popup + countdown)
@@ -1718,6 +1725,59 @@ console.log('[POTUSAlert] READY -- try POTUSAlert.test(1), test(2), or test(3)')
 
 })();
 
+</script>
+
+<script>
+(function(){
+var s=document.createElement('style');
+s.innerHTML='.pa1{position:fixed;bottom:80px;right:24px;width:320px;background:#1a1400;border:2px solid #ffb800;border-radius:6px;padding:16px;z-index:99999;font-family:JetBrains Mono,monospace;color:#e0c060;font-size:13px;box-shadow:0 0 30px rgba(255,184,0,.3)}.pa2{position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg,#1a0800,#2a1000,#1a0800);border-bottom:3px solid #ff6600;padding:14px 24px;z-index:99999;font-family:JetBrains Mono,monospace;color:#ffa050;font-size:14px;font-weight:600;box-shadow:0 4px 40px rgba(255,102,0,.4)}.pa3{position:fixed;inset:0;background:rgba(6,0,0,.93);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:JetBrains Mono,monospace}.pa3-box{text-align:center;padding:40px;max-width:700px}.pa3-bob{font-size:90px;animation:pBob .4s ease-in-out infinite alternate;display:inline-block;transform-origin:bottom center;margin-bottom:12px}.pa3-title{color:#ff1a00;font-size:clamp(24px,4vw,40px);font-weight:900;margin-bottom:12px;text-shadow:0 0 30px rgba(255,26,0,.6)}.pa3-msg{color:#ffa090;font-size:16px;line-height:1.7;margin-bottom:20px}.pa3-warn{color:rgba(255,160,144,.6);font-size:12px;margin-bottom:28px}.pa-border{position:fixed;inset:0;border:4px solid #ff1a00;z-index:99998;animation:pFL .6s ease-in-out infinite;pointer-events:none}.pa-btn{font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;padding:12px 28px;border-radius:4px;cursor:pointer;margin:4px}@keyframes pBob{from{transform:rotate(-8deg)}to{transform:rotate(8deg) scale(1.12)}}@keyframes pFL{0%,100%{opacity:1;box-shadow:0 0 60px rgba(255,26,0,.5)}50%{opacity:.3}}';
+document.head.appendChild(s);
+function _rm(){
+  var e=document.getElementById('_pa'),b=document.getElementById('_pb');
+  if(e)e.remove();if(b)b.remove();
+}
+window.POTUSAlert={
+  test:function(n){this.fire(n,
+    n===1?'POTUS press conference in 30 min at 10AM ET. Tariff comments possible. Watch NQ and ES closely.':
+    n===2?'Breaking: POTUS posted on Truth Social re new tariff package. NQ and ES futures moving sharply.':
+    'Major unexpected executive action reported. NQ moving sharply. Extreme volatility. Consider flat until situation clears.',
+    n===1?'SCHEDULED SPEECH':n===2?'TAPE BOMB ALERT':'TAPE BOMB INCOMING');},
+  fire:function(n,msg,title){
+    _rm();
+    var e=document.createElement('div');e.id='_pa';
+    if(n===1){
+      e.className='pa1';
+      e.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:22px">&#9888;&#65039;</span><b style="color:#ffb800;letter-spacing:.1em">'+(title||'HEADS UP')+'</b><button onclick="POTUSAlert.dismiss()" style="margin-left:auto;background:none;border:none;color:rgba(255,184,0,.5);font-size:18px;cursor:pointer">&#x2715;</button></div><div style="margin-bottom:12px">'+msg+'</div><button class="pa-btn" onclick="POTUSAlert.dismiss()" style="background:#ffb800;color:#1a0800;border:none">DISMISS</button>';
+    } else if(n===2){
+      e.className='pa2';
+      e.innerHTML='<div style="display:flex;align-items:center;gap:14px"><span style="background:#ff6600;color:#1a0800;font-size:11px;font-weight:700;padding:4px 12px;border-radius:3px;white-space:nowrap">&#128225; TAPE BOMB</span><span style="font-size:22px">&#127482;&#127480;</span><span style="flex:1">'+msg+'</span><span style="color:rgba(255,160,80,.7);white-space:nowrap">&#9889; HIGH VOL RISK</span><button onclick="POTUSAlert.dismiss()" style="background:none;border:none;color:#ff6600;font-size:20px;cursor:pointer;padding:0 4px">&#x2715;</button></div>';
+      setTimeout(function(){if(document.getElementById('_pa'))_rm();},5*60*1000);
+    } else if(n===3){
+      var border=document.createElement('div');border.id='_pb';border.className='pa-border';document.body.appendChild(border);
+      e.className='pa3';
+      e.innerHTML='<div class="pa3-box"><div class="pa3-bob">&#129312;</div><div class="pa3-title">'+(title||'TAPE BOMB')+'</div><div class="pa3-msg">'+msg+'</div><div class="pa3-warn">&#9888; EXTREME VOLATILITY &middot; CONSIDER FLAT &middot; FOR ENTERTAINMENT ONLY &middot; NOT FINANCIAL ADVICE</div><div><button class="pa-btn" onclick="POTUSAlert.dismiss()" style="background:rgba(255,26,0,.15);color:#ff6650;border:1px solid rgba(255,26,0,.4)">ACKNOWLEDGE &amp; DISMISS</button><button class="pa-btn" onclick="POTUSAlert.dismiss()" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.35)">GOT IT</button></div></div>';
+    }
+    document.body.appendChild(e);
+  },
+  dismiss:function(){
+    _rm();
+    // Restore cone to normal width on dismiss
+    if(window.chartInstance) {
+      try { window.chartInstance.destroy(); window.chartInstance=null; render(currentSymbol); } catch(e){}
+    }
+  }
+};
+var _fk={};
+setInterval(function(){
+  var t=new Date().getHours()*60+new Date().getMinutes();
+  [{h:9,m:0,lv:1,w:30,ti:'SCHEDULED SPEECH',ms:'POTUS remarks 10AM ET. Watch NQ/ES.'},{h:14,m:30,lv:1,w:30,ti:'PRESS CONFERENCE',ms:'WH briefing 3:30PM ET.'}].forEach(function(e){
+    var tE=e.h*60+e.m,k=e.h+':'+e.m;
+    if(t===tE-e.w&&!_fk[k+'w']){_fk[k+'w']=1;window.POTUSAlert.fire(e.lv,e.ms,e.ti,e.w);}
+    if(t===tE&&!_fk[k+'f']){_fk[k+'f']=1;window.POTUSAlert.fire(2,e.ms,'LIVE: '+e.ti);}
+  });
+},60000);
+console.log('[POTUSAlert] READY -- POTUSAlert.test(1), test(2), test(3)');
+})();
 </script>
 </body>
 </html>
