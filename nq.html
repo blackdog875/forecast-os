@@ -399,20 +399,6 @@
     .plan-grid { grid-template-columns: 1fr; }
   }
 
-  /* ── SPCX SPECIAL GLOW ── */
-  .mag10-card.spcx-card {
-    border-color: rgba(0,212,255,0.4) !important;
-    background: rgba(0,212,255,0.04) !important;
-  }
-  .mag10-card.spcx-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 4px;
-    box-shadow: 0 0 15px rgba(0,212,255,0.15);
-    pointer-events: none;
-  }
-
   /* ── MAG 10 PANEL ── */
   .mag10-panel {
     background: var(--bg3);
@@ -756,7 +742,7 @@
   <!-- MAG 10 PANEL -->
   <div class="mag10-panel">
     <div class="mag10-hdr">
-      <span class="mag10-title">⬡ Mag 10 · NQ Movers · <span style="color:var(--bull);font-size:11px;">SPCX LIVE 🚀</span></span>
+      <span class="mag10-title">⬡ Mag 10 · QQQ Underliers</span>
       <span class="mag10-sub">NQ component stocks · price + % change</span>
     </div>
     <div class="mag10-grid" id="mag10Grid" role="list" aria-label="Magnificent 10 stock prices and percent changes"></div>
@@ -765,7 +751,7 @@
   <!-- BOTTOM BAR -->
   <div class="bottom-bar">
     <span class="disclaimer" id="disclaimer">
-      FORECAST OS v1.0 · SIMULATED DATA — LIVE FEED COMING SOON · FOR ENTERTAINMENT &amp; EDUCATIONAL USE ONLY · NOT FINANCIAL ADVICE · FUTURES TRADING INVOLVES RISK
+      FORECAST OS v1.0 · SIMULATED DATA — LIVE FEED COMING SOON · NOT FINANCIAL ADVICE · FOR EDUCATIONAL USE ONLY
     </span>
     <div class="btn-group">
       <button class="btn btn-outline" onclick="refreshData()">↺ REFRESH</button>
@@ -1114,8 +1100,8 @@ const MAG10 = [
   { sym:'META',  name:'Meta',       base:718.40, weight:'4.8%' },
   { sym:'GOOGL', name:'Alphabet',   base:178.90, weight:'4.2%' },
   { sym:'TSLA',  name:'Tesla',      base:342.60, weight:'3.9%' },
-  { sym:'SPCX',  name:'SpaceX',     base:165.00, weight:'🚀 NEW' },
-  { sym:'AMD',   name:'AMD',        base:168.40, weight:'Semi' },
+  { sym:'AVGO',  name:'Broadcom',   base:248.70, weight:'3.1%' },
+  { sym:'COST',  name:'Costco',     base:1024.50,weight:'2.8%' },
   { sym:'NFLX',  name:'Netflix',    base:1312.80,weight:'2.6%' },
 ];
 
@@ -1140,8 +1126,7 @@ function buildMag10() {
       ? px.toLocaleString('en-US', { minimumFractionDigits:0, maximumFractionDigits:0 })
       : px.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
 
-    const extraClass = stock.sym === 'SPCX' ? ' spcx-card' : '';
-    return `<div class="mag10-card ${isUp?'bull-card':'bear-card'}${extraClass}" role="listitem" aria-label="${stock.name}: $${pxFmt}, ${isUp?'up':'down'} ${Math.abs(chgPct).toFixed(2)} percent">
+    return `<div class="mag10-card ${isUp?'bull-card':'bear-card'}" role="listitem" aria-label="${stock.name}: $${pxFmt}, ${isUp?'up':'down'} ${Math.abs(chgPct).toFixed(2)} percent">
       <div class="mag10-sym">${stock.sym}</div>
       <div class="mag10-px">$${pxFmt}</div>
       <div class="mag10-chg ${isUp?'up':'dn'}">${isUp?'▲':'▼'}${Math.abs(chgPct).toFixed(2)}%</div>
@@ -1162,8 +1147,5 @@ setInterval(() => {
   buildMag10();
 }, 30000);
 </script>
-
-<!-- POTUS ALERT SYSTEM -->
-<script src="potus-alert.js"></script>
 </body>
 </html>

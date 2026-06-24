@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Forecast OS — Institutional Futures Intelligence</title>
-<meta name="description" content="24/7 live futures intelligence terminal — your binoculars for the market action. NQ, ES, CL, Gold, Silver. Entertainment use only.">
+<meta name="description" content="24/7 live futures forecasting terminal. NQ, ES, MCL, Gold, Silver. Real-time bias, key levels, and probability cones.">
 <meta property="og:title" content="Forecast OS — Futures Intelligence Terminal">
-<meta property="og:description" content="Live 24/7 futures forecasting. NQ · ES · CL · Gold · Silver · SPCX">
+<meta property="og:description" content="Live 24/7 futures forecasting. NQ · ES · MCL · Gold · Silver">
 <meta property="og:type" content="website">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -17,7 +17,7 @@
   --text:#c8d8f0;--dim:rgba(200,216,240,0.5);--faint:rgba(200,216,240,0.18);
   --border:rgba(0,212,255,0.14);--border-hi:rgba(0,212,255,0.35);
 }
-html,body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:16px;min-height:100vh;overflow-x:hidden}
+html,body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;min-height:100vh;overflow-x:hidden}
 body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:9999}
 
 /* ── HERO ── */
@@ -40,7 +40,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 }
 .hero-content{position:relative;z-index:1;max-width:800px;}
 .eyebrow{
-  font-size:13px;letter-spacing:0.3em;color:var(--cyan);
+  font-size:10px;letter-spacing:0.3em;color:var(--cyan);
   text-transform:uppercase;margin-bottom:20px;
   display:inline-flex;align-items:center;gap:10px;
 }
@@ -65,7 +65,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 }
 .live-badge{
   display:inline-flex;align-items:center;gap:8px;
-  font-size:16px;font-weight:700;letter-spacing:0.15em;
+  font-size:11px;font-weight:700;letter-spacing:0.15em;
   padding:8px 20px;border-radius:20px;
   background:rgba(0,255,148,0.08);
   border:1px solid rgba(0,255,148,0.3);
@@ -76,38 +76,38 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:60px;}
 .btn-primary{
   font-family:'JetBrains Mono',monospace;
-  font-size:15px;font-weight:700;letter-spacing:0.12em;
-  padding:18px 40px;border-radius:4px;cursor:pointer;border:none;
+  font-size:12px;font-weight:700;letter-spacing:0.12em;
+  padding:14px 32px;border-radius:4px;cursor:pointer;border:none;
   background:var(--cyan);color:#060810;
   transition:all 0.15s;text-decoration:none;display:inline-block;
 }
 .btn-primary:hover{background:#00eeff;transform:translateY(-2px);}
 .btn-outline{
   font-family:'JetBrains Mono',monospace;
-  font-size:15px;font-weight:500;letter-spacing:0.12em;
-  padding:18px 40px;border-radius:4px;cursor:pointer;
+  font-size:12px;font-weight:500;letter-spacing:0.12em;
+  padding:14px 32px;border-radius:4px;cursor:pointer;
   background:transparent;color:var(--cyan);
   border:1px solid var(--border-hi);
   transition:all 0.15s;text-decoration:none;display:inline-block;
 }
 .btn-outline:hover{background:rgba(0,212,255,0.08);transform:translateY(-2px);}
 .ticker-row{
-  display:flex;gap:36px;justify-content:center;flex-wrap:wrap;
-  font-size:15px;
+  display:flex;gap:24px;justify-content:center;flex-wrap:wrap;
+  font-size:11px;
 }
-.ticker-item{display:flex;flex-direction:column;align-items:center;gap:5px;}
-.t-sym{color:#fff;font-weight:700;font-size:18px;letter-spacing:0.06em;}
-.t-px{color:var(--dim);font-size:16px;}
-.t-chg{font-size:15px;font-weight:600;}
+.ticker-item{display:flex;flex-direction:column;align-items:center;gap:3px;}
+.t-sym{color:#fff;font-weight:700;font-size:13px;}
+.t-px{color:var(--dim);}
+.t-chg{font-size:10px;}
 .t-up{color:var(--bull);}.t-dn{color:var(--bear);}
 
 /* ── TERMINALS SECTION ── */
-.section{padding:80px 32px;max-width:100%;margin:0 auto;}
-.section-eyebrow{font-size:13px;letter-spacing:0.25em;color:var(--cyan);text-transform:uppercase;margin-bottom:12px;}
-.section-title{font-family:'Orbitron',sans-serif;font-size:clamp(28px,4vw,48px);font-weight:700;color:#fff;margin-bottom:8px;}
-.section-sub{font-size:16px;color:var(--dim);margin-bottom:48px;line-height:1.9;}
+.section{padding:80px 20px;max-width:1200px;margin:0 auto;}
+.section-eyebrow{font-size:9px;letter-spacing:0.25em;color:var(--cyan);text-transform:uppercase;margin-bottom:12px;}
+.section-title{font-family:'Orbitron',sans-serif;font-size:clamp(22px,4vw,36px);font-weight:700;color:#fff;margin-bottom:8px;}
+.section-sub{font-size:11px;color:var(--dim);margin-bottom:40px;line-height:1.8;}
 
-.terminal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:20px;}
+.terminal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
 .terminal-card{
   background:var(--bg2);border:1px solid var(--border);border-radius:6px;
   overflow:hidden;transition:border-color 0.2s,transform 0.2s;
@@ -116,7 +116,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .terminal-card:hover{border-color:var(--border-hi);transform:translateY(-3px);}
 .terminal-card.locked{opacity:0.7;}
 .tc-preview{
-  height:220px;background:var(--bg3);
+  height:160px;background:var(--bg3);
   display:flex;align-items:center;justify-content:center;
   position:relative;overflow:hidden;
 }
@@ -125,18 +125,18 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   background:repeating-linear-gradient(0deg,transparent,transparent 18px,rgba(0,212,255,0.03) 19px);
 }
 .tc-preview-inner{position:relative;z-index:1;text-align:center;}
-.tc-symbol{font-family:'Orbitron',sans-serif;font-size:42px;font-weight:900;color:#fff;letter-spacing:0.08em;}
-.tc-name{font-size:14px;letter-spacing:0.15em;color:var(--dim);text-transform:uppercase;margin-top:4px;}
-.tc-price{font-size:24px;font-weight:700;color:var(--cyan);margin-top:8px;}
-.tc-body{padding:22px 24px;}
-.tc-title{font-size:18px;font-weight:700;color:#fff;margin-bottom:8px;}
-.tc-desc{font-size:14px;color:var(--dim);line-height:1.8;margin-bottom:16px;}
+.tc-symbol{font-family:'Orbitron',sans-serif;font-size:28px;font-weight:900;color:#fff;letter-spacing:0.08em;}
+.tc-name{font-size:9px;letter-spacing:0.15em;color:var(--dim);text-transform:uppercase;margin-top:4px;}
+.tc-price{font-size:18px;font-weight:700;color:var(--cyan);margin-top:8px;}
+.tc-body{padding:16px 18px;}
+.tc-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;}
+.tc-desc{font-size:10px;color:var(--dim);line-height:1.7;margin-bottom:12px;}
 .tc-footer{display:flex;align-items:center;justify-content:space-between;}
-.tc-tag{font-size:13px;letter-spacing:0.1em;padding:5px 12px;border-radius:2px;}
+.tc-tag{font-size:9px;letter-spacing:0.1em;padding:3px 8px;border-radius:2px;}
 .tag-free{background:rgba(0,255,148,0.1);color:var(--bull);border:1px solid rgba(0,255,148,0.25);}
 .tag-pro{background:rgba(0,212,255,0.08);color:var(--cyan);border:1px solid var(--border-hi);}
 .tag-full{background:rgba(255,184,0,0.08);color:var(--amber);border:1px solid rgba(255,184,0,0.25);}
-.tc-arrow{font-size:24px;color:var(--cyan);}
+.tc-arrow{font-size:16px;color:var(--cyan);}
 .lock-overlay{
   position:absolute;inset:0;
   background:rgba(6,8,16,0.6);
@@ -153,20 +153,20 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .price-card.featured{border-color:var(--amber);}
 .price-card.featured::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--amber);}
 .price-badge{
-  display:inline-block;font-size:11px;letter-spacing:0.15em;
+  display:inline-block;font-size:8px;letter-spacing:0.15em;
   padding:3px 10px;border-radius:2px;margin-bottom:16px;
   background:rgba(255,184,0,0.12);color:var(--amber);
   border:1px solid rgba(255,184,0,0.3);
 }
-.price-tier{font-size:13px;letter-spacing:0.15em;color:var(--dim);text-transform:uppercase;margin-bottom:10px;}
+.price-tier{font-size:10px;letter-spacing:0.15em;color:var(--dim);text-transform:uppercase;margin-bottom:10px;}
 .price-amount{font-family:'Orbitron',sans-serif;font-size:42px;font-weight:700;color:#fff;margin-bottom:2px;}
 .price-amount sup{font-size:20px;vertical-align:super;}
-.price-period{font-size:13px;color:var(--dim);margin-bottom:6px;}
-.price-monthly{font-size:14px;color:var(--bull);margin-bottom:24px;}
+.price-period{font-size:10px;color:var(--dim);margin-bottom:6px;}
+.price-monthly{font-size:11px;color:var(--bull);margin-bottom:24px;}
 .price-features{text-align:left;margin-bottom:24px;}
 .price-feature{
   display:flex;align-items:center;gap:8px;
-  font-size:13px;color:var(--dim);padding:5px 0;
+  font-size:10px;color:var(--dim);padding:5px 0;
   border-bottom:1px solid var(--border);
 }
 .price-feature:last-child{border-bottom:none;}
@@ -207,7 +207,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 footer{
   border-top:1px solid var(--border);
   padding:30px 20px;text-align:center;
-  font-size:12px;color:var(--faint);letter-spacing:0.08em;
+  font-size:9px;color:var(--faint);letter-spacing:0.08em;
   line-height:2;
 }
 footer a{color:var(--dim);text-decoration:none;}
@@ -218,35 +218,6 @@ footer a:hover{color:var(--cyan);}
   .btn-primary,.btn-outline{width:100%;text-align:center;}
   .stream-bar{flex-direction:column;}
 }
-
-  /* ── TOP NAV ── */
-  .top-nav{
-    position:fixed;top:0;left:0;right:0;z-index:1000;
-    background:rgba(6,8,16,0.95);
-    border-bottom:1px solid rgba(0,212,255,0.2);
-    backdrop-filter:blur(10px);
-    display:flex;align-items:center;justify-content:space-between;
-    padding:0 28px;height:52px;
-  }
-  .top-nav-logo{
-    font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;
-    letter-spacing:0.2em;color:#00d4ff;text-decoration:none;
-  }
-  .top-nav-links{display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
-  .top-nav-link{
-    font-family:'JetBrains Mono',monospace;
-    font-size:10px;letter-spacing:0.1em;
-    color:rgba(200,216,240,0.6);text-decoration:none;
-    padding:6px 12px;border-radius:3px;
-    border:1px solid transparent;
-    transition:all 0.15s;white-space:nowrap;
-  }
-  .top-nav-link:hover{color:#00d4ff;border-color:rgba(0,212,255,0.3);background:rgba(0,212,255,0.06);}
-  .top-nav-link.active{color:#00d4ff;border-color:rgba(0,212,255,0.3);background:rgba(0,212,255,0.06);}
-  .top-nav-link.highlight{color:#00ff94;border-color:rgba(0,255,148,0.3);background:rgba(0,255,148,0.06);}
-  .top-nav-link.highlight:hover{background:rgba(0,255,148,0.12);}
-  body{padding-top:52px;}
-
 </style>
 </head>
 <body>
@@ -257,7 +228,7 @@ footer a:hover{color:var(--cyan);}
     <a href="briefing.html" class="top-nav-link highlight">⬡ BRIEFING</a>
     <a href="nq.html"       class="top-nav-link">NQ/MNQ</a>
     <a href="es.html"       class="top-nav-link">ES/MES</a>
-    <a href="mcl.html"      class="top-nav-link">CL/MCL</a>
+    <a href="mcl.html"      class="top-nav-link">MCL</a>
     <a href="gc.html"       class="top-nav-link">GOLD</a>
     <a href="si.html"       class="top-nav-link">SILVER</a>
     <a href="#pricing"      class="top-nav-link">SUBSCRIBE</a>
@@ -329,14 +300,14 @@ footer a:hover{color:var(--cyan);}
     <a href="mcl.html" class="terminal-card">
       <div class="tc-preview" style="background:linear-gradient(135deg,#0a100a,#0f1a0f)">
         <div class="tc-preview-inner">
-          <div class="tc-symbol">CL</div>
-          <div class="tc-name">Crude Oil Futures</div>
+          <div class="tc-symbol">MCL</div>
+          <div class="tc-name">Micro Crude Oil</div>
           <div class="tc-price" id="mcl-px">75.42</div>
         </div>
       </div>
       <div class="tc-body">
-        <div class="tc-title">CL / MCL Terminal</div>
-        <div class="tc-desc">CL / MCL Crude Oil · EIA inventory signals · Supply zone analysis · OVN bias</div>
+        <div class="tc-title">MCL Terminal</div>
+        <div class="tc-desc">Micro Crude Oil · EIA inventory signals · Supply zone analysis · OVN bias</div>
         <div class="tc-footer">
           <span class="tc-tag tag-pro">PRO</span>
           <span class="tc-arrow">→</span>
@@ -447,7 +418,7 @@ footer a:hover{color:var(--cyan);}
       <div class="price-monthly">= $4 / month</div>
       <div class="price-features">
         <div class="price-feature"><span class="feat-ok">✓</span> All 5 symbols</div>
-        <div class="price-feature"><span class="feat-ok">✓</span> NQ · ES · CL · GC · SI</div>
+        <div class="price-feature"><span class="feat-ok">✓</span> NQ · ES · MCL · GC · SI</div>
         <div class="price-feature"><span class="feat-ok">✓</span> Live data feed</div>
         <div class="price-feature"><span class="feat-ok">✓</span> Overnight mode</div>
         <div class="price-feature"><span class="feat-ok">✓</span> Full board view</div>
@@ -500,7 +471,7 @@ footer a:hover{color:var(--cyan);}
     <a href="briefing.html">Briefing</a> · 
     <a href="nq.html">NQ</a> · 
     <a href="es.html">ES</a> · 
-    <a href="mcl.html">CL/MCL</a> · 
+    <a href="mcl.html">MCL</a> · 
     <a href="gc.html">Gold</a> · 
     <a href="si.html">Silver</a>
   </div>
@@ -510,7 +481,7 @@ footer a:hover{color:var(--cyan);}
     <a href="#stream">Watch Live</a>
   </div>
   <div style="margin-top:12px;font-size:8px;opacity:0.5">
-    FOR ENTERTAINMENT &amp; EDUCATIONAL USE ONLY · NOT FINANCIAL ADVICE · FUTURES TRADING INVOLVES SUBSTANTIAL RISK · © 2026 TEXAS WEDGE VENTURES
+    FOR EDUCATIONAL USE ONLY · NOT FINANCIAL ADVICE · PAST PERFORMANCE DOES NOT GUARANTEE FUTURE RESULTS
   </div>
 </footer>
 
@@ -525,14 +496,13 @@ const prices = {
 };
 
 const tickerData = [
-  { sym:'NQ',   base:21840,  dec:2 },
-  { sym:'ES',   base:5920,   dec:2 },
-  { sym:'SPCX', base:165.00, dec:2 },
-  { sym:'MCL',  base:75.40,  dec:2 },
-  { sym:'GC',   base:4157,   dec:2 },
-  { sym:'SI',   base:32.80,  dec:3 },
-  { sym:'RTY',  base:2210,   dec:2 },
-  { sym:'YM',   base:43800,  dec:2 },
+  { sym:'NQ',  base:21840,  dec:2 },
+  { sym:'ES',  base:5920,   dec:2 },
+  { sym:'MCL', base:75.40,  dec:2 },
+  { sym:'GC',  base:4157,   dec:2 },
+  { sym:'SI',  base:32.80,  dec:3 },
+  { sym:'RTY', base:2210,   dec:2 },
+  { sym:'YM',  base:43800,  dec:2 },
 ];
 
 function randomPrice(base, atr) {
