@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FORECAST OS — NQ/MNQ Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #060810;
+    --bg2:       #0a1628;
+    --bg3:       #080f1e;
+    --cyan:      #00d4ff;
+    --cyan-dim:  rgba(0,212,255,0.18);
+    --cyan-glow: rgba(0,212,255,0.08);
+    --bull:      #00ff94;
+    --bear:      #ff3b5c;
+    --amber:     #ffb800;
+    --text:      #c8d8f0;
+    --text-dim:  rgba(200,216,240,0.45);
+    --text-faint:rgba(200,216,240,0.2);
+    --border:    rgba(0,212,255,0.14);
+    --border-hi: rgba(0,212,255,0.35);
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── SCANLINE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── LAYOUT ── */
+  .terminal {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 72px 32px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-hi);
+  }
+  .hdr-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 15px; font-weight: 700;
+    letter-spacing: 0.22em;
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+  .logo span { color: rgba(0,212,255,0.4); }
+  .vsep { width: 1px; height: 22px; background: var(--border-hi); }
+  .ticker-lbl {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 32px; font-weight: 900;
+    color: #fff; letter-spacing: 0.08em;
+  }
+  .price-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 24px; font-weight: 700;
+    color: #fff; letter-spacing: 0.04em;
+  }
+  .chg-badge {
+    font-size: 16px; font-weight: 600;
+    padding: 5px 14px; border-radius: 3px;
+    letter-spacing: 0.05em;
+  }
+  .chg-up   { color: var(--bull); background: rgba(0,255,148,0.1); border: 1px solid rgba(0,255,148,0.25); }
+  .chg-down { color: var(--bear); background: rgba(255,59,92,0.1);  border: 1px solid rgba(255,59,92,0.25); }
+  .hdr-right { display: flex; align-items: center; gap: 12px; }
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--bull);
+    animation: blink 1.8s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  .timestamp { font-size: 14px; color: var(--text-dim); letter-spacing: 0.07em; }
+  .symbol-selector {
+    background: var(--bg2);
+    border: 1px solid var(--border-hi);
+    border-radius: 4px;
+    color: var(--cyan);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+  }
+
+  /* ── METRIC STRIP ── */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+  .mc {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 9px 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .mc::after {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .mc.cyan-top::after  { background: var(--cyan); }
+  .mc.bull-top::after  { background: var(--bull); }
+  .mc.bear-top::after  { background: var(--bear); }
+  .mc.amber-top::after { background: var(--amber); }
+  .mc-lbl {
+    font-size: 12px; letter-spacing: 0.14em;
+    color: var(--text-dim); text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .mc-val { font-size: 26px; font-weight: 700; color: #e8f0ff; }
+  .mc-sub { font-size: 12px; color: var(--text-faint); margin-top: 3px; }
+
+  /* ── MAIN BODY ── */
+  .body-grid {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 10px;
+  }
+
+  /* ── CHART PANEL ── */
+  .chart-panel {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+  }
+  .chart-hdr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .chart-title {
+    font-size: 13px; letter-spacing: 0.14em;
+    color: var(--text-dim); text-transform: uppercase;
+  }
+  .legend {
+    display: flex; gap: 14px;
+  }
+  .leg-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--text-dim);
+  }
+  .leg-dot {
+    width: 9px; height: 9px; border-radius: 2px;
+  }
+  .chart-canvas-wrap {
+    position: relative;
+    width: 100%; height: 420px;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar { display: flex; flex-direction: column; gap: 8px; }
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 18px;
+  }
+  .panel-title {
+    font-size: 13px; letter-spacing: 0.14em;
+    color: var(--text-dim); text-transform: uppercase;
+    padding-bottom: 9px; margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Bias bars */
+  .bias-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .bias-row:last-child { margin-bottom: 0; }
+  .bias-tag { font-size: 14px; width: 48px; letter-spacing: 0.05em; }
+  .bar-track {
+    flex: 1; height: 5px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px; overflow: hidden;
+  }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 1.2s ease; }
+  .fill-bull { background: var(--bull); }
+  .fill-bear { background: var(--bear); }
+  .fill-neu  { background: var(--cyan); }
+  .bias-pct { font-size: 15px; font-weight: 700; width: 46px; text-align: right; }
+
+  /* Key levels */
+  .level-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 8px;
+    border-radius: 3px;
+    margin-bottom: 3px;
+    border: 1px solid transparent;
+    transition: background 0.15s;
+    font-size: 15px;
+  }
+  .level-row:last-child { margin-bottom: 0; }
+  .level-row.row-res { background: rgba(255,59,92,0.06); border-color: rgba(255,59,92,0.15); }
+  .level-row.row-sup { background: rgba(0,255,148,0.06); border-color: rgba(0,255,148,0.15); }
+  .level-row.row-poc { background: rgba(0,212,255,0.06); border-color: rgba(0,212,255,0.2); }
+  .level-row.row-pvt { background: rgba(255,184,0,0.06); border-color: rgba(255,184,0,0.2); }
+  .lv-tag { letter-spacing: 0.1em; font-size: 12px; font-weight: 700; padding: 2px 7px; border-radius: 3px; }
+  .lv-tag-res { color: var(--bear); background: rgba(255,59,92,0.15); border: 1px solid rgba(255,59,92,0.3); }
+  .lv-tag-sup { color: var(--bull); background: rgba(0,255,148,0.12); border: 1px solid rgba(0,255,148,0.3); }
+  .lv-tag-poc { color: var(--cyan); background: rgba(0,212,255,0.1);  border: 1px solid rgba(0,212,255,0.3); }
+  .lv-tag-pvt { color: var(--amber);background: rgba(255,184,0,0.1);  border: 1px solid rgba(255,184,0,0.3); }
+  .lv-res { color: var(--bear); font-weight: 700; font-size: 15px; }
+  .lv-sup { color: var(--bull); font-weight: 700; font-size: 15px; }
+  .lv-poc { color: var(--cyan); font-weight: 700; font-size: 15px; }
+  .lv-pvt { color: var(--amber);font-weight: 700; font-size: 15px; }
+
+  /* Confluence */
+  .conf-line {
+    font-size: 13px; line-height: 2.2;
+    color: var(--text-dim);
+  }
+  .conf-bull { color: var(--bull); }
+  .conf-bear { color: var(--bear); }
+
+  /* ── TF GRID ── */
+  .tf-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+  .tf-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 12px;
+    text-align: center;
+  }
+  .tf-name {
+    font-size: 12px; letter-spacing: 0.1em;
+    color: var(--text-dim); text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .tf-signal { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .tf-detail { font-size: 11px; color: var(--text-faint); }
+  .sig-bull { color: var(--bull); }
+  .sig-bear { color: var(--bear); }
+  .sig-neu  { color: var(--amber); }
+
+  /* ── BOTTOM BAR ── */
+  .bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .disclaimer {
+    font-size: 11px; letter-spacing: 0.06em;
+    color: rgba(200,216,240,0.2);
+  }
+  .btn-group { display: flex; gap: 8px; align-items: center; }
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; letter-spacing: 0.1em;
+    padding: 8px 20px; border-radius: 3px;
+    cursor: pointer; border: none;
+  }
+  .btn-primary {
+    background: var(--cyan);
+    color: #060810; font-weight: 700;
+  }
+  .btn-primary:hover { background: #00eeff; }
+  .btn-outline {
+    background: transparent;
+    color: var(--cyan);
+    border: 1px solid var(--border-hi);
+  }
+  .btn-outline:hover { background: var(--cyan-dim); }
+
+  /* ── SUBSCRIPTION OVERLAY ── */
+  .sub-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(6,8,16,0.92);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .sub-overlay.active { display: flex; }
+  .sub-modal {
+    background: var(--bg2);
+    border: 1px solid var(--border-hi);
+    border-radius: 8px;
+    padding: 36px 40px;
+    max-width: 520px;
+    width: 90%;
+    text-align: center;
+  }
+  .sub-logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.2em; color: var(--cyan);
+    margin-bottom: 8px;
+  }
+  .sub-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 20px; font-weight: 700;
+    color: #fff; margin-bottom: 6px;
+  }
+  .sub-sub { font-size: 11px; color: var(--text-dim); margin-bottom: 28px; line-height: 1.7; }
+  .plan-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+  .plan-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 14px 10px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .plan-card:hover, .plan-card.selected {
+    border-color: var(--cyan);
+    background: var(--cyan-glow);
+  }
+  .plan-card.featured { border-color: var(--amber); }
+  .plan-name { font-size: 9px; letter-spacing: 0.12em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px; }
+  .plan-price { font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 3px; }
+  .plan-period { font-size: 9px; color: var(--text-dim); margin-bottom: 8px; }
+  .plan-badge {
+    display: inline-block; font-size: 8px; letter-spacing: 0.1em;
+    padding: 2px 8px; border-radius: 2px;
+    background: rgba(255,184,0,0.15); color: var(--amber);
+    border: 1px solid rgba(255,184,0,0.3);
+  }
+  .plan-features { font-size: 9px; color: var(--text-dim); line-height: 1.9; text-align: left; margin-top: 8px; }
+  .sub-trial { font-size: 10px; color: var(--bull); margin-bottom: 14px; }
+  .sub-close { font-size: 9px; color: var(--text-faint); cursor: pointer; text-decoration: underline; margin-top: 10px; display: block; }
+  .sub-close:hover { color: var(--text-dim); }
+
+  /* ── TICKER TAPE ── */
+  .ticker-tape {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    height: 38px;
+    display: flex;
+    align-items: center;
+  }
+  .tape-label {
+    font-size: 12px; letter-spacing: 0.14em;
+    color: var(--cyan); text-transform: uppercase;
+    padding: 0 12px; border-right: 1px solid var(--border);
+    white-space: nowrap; height: 100%;
+    display: flex; align-items: center;
+    background: var(--cyan-glow);
+  }
+  .tape-scroll-wrap { flex: 1; overflow: hidden; }
+  .tape-scroll {
+    display: flex; align-items: center;
+    white-space: nowrap;
+    animation: scroll-tape 40s linear infinite;
+  }
+  @keyframes scroll-tape {
+    0%   { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+  }
+  .tape-item {
+    font-size: 13px; padding: 0 20px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .tape-sym { color: #fff; font-weight: 700; font-size: 14px; }
+  .tape-px  { color: var(--text); }
+  .tape-up  { color: var(--bull); }
+  .tape-dn  { color: var(--bear); }
+
+  @media (max-width: 900px) {
+    .metrics { grid-template-columns: repeat(3, 1fr); }
+    .body-grid { grid-template-columns: 1fr; }
+    .tf-grid { grid-template-columns: repeat(3, 1fr); }
+    .plan-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── SPCX SPECIAL GLOW ── */
+  .mag10-card.spcx-card {
+    border-color: rgba(0,212,255,0.4) !important;
+    background: rgba(0,212,255,0.04) !important;
+  }
+  .mag10-card.spcx-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 4px;
+    box-shadow: 0 0 15px rgba(0,212,255,0.15);
+    pointer-events: none;
+  }
+
+  /* ── MAG 10 PANEL ── */
+  .mag10-panel {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+  }
+  .mag10-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mag10-title {
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .mag10-sub {
+    font-size: 12px;
+    color: var(--text-faint);
+    letter-spacing: 0.05em;
+  }
+  .mag10-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .mag10-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 10px;
+    text-align: center;
+    min-width: 110px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+    cursor: default;
+  }
+  .mag10-card:hover { border-color: var(--border-hi); }
+  .mag10-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .mag10-card.bull-card::after { background: var(--bull); }
+  .mag10-card.bear-card::after { background: var(--bear); }
+  .mag10-sym {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.06em;
+    margin-bottom: 5px;
+  }
+  .mag10-px {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 3px;
+    white-space: nowrap;
+  }
+  .mag10-chg {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+  .mag10-chg.up { color: var(--bull); }
+  .mag10-chg.dn { color: var(--bear); }
+  .mag10-weight {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-top: 3px;
+    letter-spacing: 0.05em;
+  }
+  @media (max-width: 900px) {
+    .mag10-grid { grid-template-columns: repeat(5, 1fr); }
+  }
+
+  /* ── TOP NAV ── */
+  .top-nav{
+    position:fixed;top:0;left:0;right:0;z-index:1000;
+    background:rgba(6,8,16,0.95);
+    border-bottom:1px solid rgba(0,212,255,0.2);
+    backdrop-filter:blur(10px);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 28px;height:52px;
+  }
+  .top-nav-logo{
+    font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;
+    letter-spacing:0.2em;color:#00d4ff;text-decoration:none;
+  }
+  .top-nav-links{display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
+  .top-nav-link{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;letter-spacing:0.1em;
+    color:rgba(200,216,240,0.6);text-decoration:none;
+    padding:6px 12px;border-radius:3px;
+    border:1px solid transparent;
+    transition:all 0.15s;white-space:nowrap;
+  }
+  .top-nav-link:hover{color:#00d4ff;border-color:rgba(0,212,255,0.3);background:rgba(0,212,255,0.06);}
+  .top-nav-link.active{color:#00d4ff;border-color:rgba(0,212,255,0.3);background:rgba(0,212,255,0.06);}
+  .top-nav-link.highlight{color:#00ff94;border-color:rgba(0,255,148,0.3);background:rgba(0,255,148,0.06);}
+
+</style>
+</head>
+<body>
+
+<nav class="top-nav" role="navigation" aria-label="Main navigation">
+  <a href="index.html" class="top-nav-logo">FORECAST OS</a>
+  <div class="top-nav-links">
+    <a href="briefing.html" class="top-nav-link highlight">⬡ BRIEFING</a>
+    <a href="nq.html" class="top-nav-link active">NQ/MNQ</a>
+    <a href="es.html" class="top-nav-link ">ES/MES</a>
+    <a href="mcl.html" class="top-nav-link ">MCL</a>
+    <a href="gc.html" class="top-nav-link ">GOLD</a>
+    <a href="si.html" class="top-nav-link ">SILVER</a>
+    <a href="index.html" class="top-nav-link ">← HUB</a>
+    
+  </div>
+</nav>
+
+<!-- ── SUBSCRIPTION OVERLAY ── -->
+<div class="sub-overlay" id="subOverlay">
+  <div class="sub-modal">
+    <div class="sub-logo">FORECAST OS</div>
+    <div class="sub-title">Unlock Full Access</div>
+    <div class="sub-sub">
+      Institutional-grade futures forecasting.<br>
+      Start free — no credit card required for trial.
+    </div>
+    <div class="plan-grid">
+      <div class="plan-card" onclick="selectPlan(this)">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">$12</div>
+        <div class="plan-period">/ year · 1 symbol</div>
+        <div class="plan-features">
+          ✓ 1 Futures symbol<br>
+          ✓ Forecast cone<br>
+          ✓ Key levels<br>
+          ✓ Daily bias
+        </div>
+      </div>
+      <div class="plan-card featured" onclick="selectPlan(this)">
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">$24</div>
+        <div class="plan-period">/ year · 2 symbols</div>
+        <div class="plan-badge">MOST POPULAR</div>
+        <div class="plan-features">
+          ✓ 2 Futures symbols<br>
+          ✓ All timeframes<br>
+          ✓ Confluence engine<br>
+          ✓ Swing outlook
+        </div>
+      </div>
+      <div class="plan-card" onclick="selectPlan(this)">
+        <div class="plan-name">Full Access</div>
+        <div class="plan-price">$48</div>
+        <div class="plan-period">/ year · all symbols</div>
+        <div class="plan-features">
+          ✓ NQ · ES · MCL<br>
+          ✓ Gold · Silver<br>
+          ✓ Live data feed<br>
+          ✓ Stream mode
+        </div>
+      </div>
+    </div>
+    <div class="sub-trial">✦ 7-DAY FREE TRIAL — NO CARD REQUIRED ✦</div>
+    <button class="btn btn-primary" onclick="startTrial()" style="width:100%;font-size:12px;padding:12px;">
+      START FREE TRIAL →
+    </button>
+    <span class="sub-close" onclick="closeSub()">Already subscribed? Sign in</span>
+  </div>
+</div>
+
+<!-- ── MAIN TERMINAL ── -->
+<div class="terminal">
+
+  <!-- TICKER TAPE -->
+  <div class="ticker-tape">
+    <div class="tape-label">FUTURES</div>
+    <div class="tape-scroll-wrap">
+      <div class="tape-scroll" id="tapeScroll"></div>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="logo">Forecast <span>OS</span></div>
+      <div class="vsep"></div>
+      <span class="ticker-lbl" id="tickerLbl">NQ / MNQ</span>
+      <span class="price-display" id="priceDisplay">—</span>
+      <span class="chg-badge chg-up" id="chgBadge">+0.00%</span>
+    </div>
+    <div class="hdr-right">
+      <select class="symbol-selector" id="symbolSel" onchange="switchSymbol(this.value)">
+        <option value="NQ">NQ / MNQ — Nasdaq 100</option>
+        <option value="ES">ES / MES — S&amp;P 500 ⬤ Pro</option>
+        <option value="MCL">MCL — Micro Crude Oil ⬤ Pro</option>
+        <option value="GC">GC — Gold Futures ⬤ Full</option>
+        <option value="SI">SI — Silver Futures ⬤ Full</option>
+      </select>
+      <span class="timestamp" id="timestamp">--:--:-- CT</span>
+      <div class="live-dot"></div>
+    </div>
+  </div>
+
+  <!-- METRICS STRIP -->
+  <div class="metrics">
+    <div class="mc cyan-top">
+      <div class="mc-lbl">Bias Score</div>
+      <div class="mc-val" id="biasScore" style="color:var(--bull)">—</div>
+      <div class="mc-sub">Composite signal</div>
+    </div>
+    <div class="mc bull-top">
+      <div class="mc-lbl">Session High Target</div>
+      <div class="mc-val" id="fcHi" style="color:var(--bear)">—</div>
+      <div class="mc-sub">Resistance zone top</div>
+    </div>
+    <div class="mc bear-top">
+      <div class="mc-lbl">Session Low Target</div>
+      <div class="mc-val" id="fcLo" style="color:var(--bull)">—</div>
+      <div class="mc-sub">Support zone floor</div>
+    </div>
+    <div class="mc amber-top">
+      <div class="mc-lbl">Expected Range</div>
+      <div class="mc-val" id="rng">—</div>
+      <div class="mc-sub">Points today</div>
+    </div>
+    <div class="mc cyan-top">
+      <div class="mc-lbl">Volume Signal</div>
+      <div class="mc-val" id="volSig">—</div>
+      <div class="mc-sub">vs 20-day avg</div>
+    </div>
+    <div class="mc cyan-top">
+      <div class="mc-lbl">ATR (14)</div>
+      <div class="mc-val" id="atrVal">—</div>
+      <div class="mc-sub">Daily volatility</div>
+    </div>
+  </div>
+
+  <!-- BODY: CHART + SIDEBAR -->
+  <div class="body-grid">
+    <div class="chart-panel">
+      <div class="chart-hdr">
+        <span class="chart-title">Probability Forecast Cone — Intraday → 4-Day Swing</span>
+        <div class="legend">
+          <span class="leg-item"><span class="leg-dot" style="background:rgba(0,255,148,0.55)"></span>Bull zone</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#00d4ff"></span>Base case</span>
+          <span class="leg-item"><span class="leg-dot" style="background:rgba(255,59,92,0.55)"></span>Bear zone</span>
+          <span class="leg-item"><span class="leg-dot" style="background:rgba(0,212,255,0.18)"></span>68% band</span>
+        </div>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="forecastChart"
+          role="img"
+          aria-label="NQ futures probability forecast cone showing bull, base case, and bear price zones projecting from current price across intraday and 4-day swing horizon">
+          NQ/MNQ futures forecast: base case, bull zone, and bear zone projections across session and swing timeframes.
+        </canvas>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <!-- DIRECTIONAL BIAS -->
+      <div class="panel">
+        <div class="panel-title">Directional Bias</div>
+        <div class="bias-row">
+          <span class="bias-tag" style="color:var(--bull)">BULL</span>
+          <div class="bar-track"><div class="bar-fill fill-bull" id="bullBar" style="width:0%"></div></div>
+          <span class="bias-pct" style="color:var(--bull)" id="bullPct">—</span>
+        </div>
+        <div class="bias-row">
+          <span class="bias-tag" style="color:var(--bear)">BEAR</span>
+          <div class="bar-track"><div class="bar-fill fill-bear" id="bearBar" style="width:0%"></div></div>
+          <span class="bias-pct" style="color:var(--bear)" id="bearPct">—</span>
+        </div>
+        <div class="bias-row">
+          <span class="bias-tag" style="color:var(--cyan)">NEU</span>
+          <div class="bar-track"><div class="bar-fill fill-neu" id="neuBar" style="width:0%"></div></div>
+          <span class="bias-pct" style="color:var(--cyan)" id="neuPct">—</span>
+        </div>
+      </div>
+
+      <!-- KEY LEVELS -->
+      <div class="panel">
+        <div class="panel-title" style="color:#fff;letter-spacing:0.18em;">⬡ <span style="color:var(--bear)">R</span><span style="color:var(--amber)">E</span><span style="color:var(--bull)">S</span> <span style="color:#fff">·</span> <span style="color:var(--cyan)">KEY LEVELS</span> <span style="color:#fff">·</span> <span style="color:var(--bull)">S</span><span style="color:var(--amber)">U</span><span style="color:var(--bear)">P</span> ⬡</div>
+        <div id="levelsPanel"></div>
+      </div>
+
+      <!-- CONFLUENCE -->
+      <div class="panel" style="flex:1">
+        <div class="panel-title">Confluence Checklist</div>
+        <div id="confPanel"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIMEFRAME GRID -->
+  <div class="tf-grid">
+    <div class="tf-card">
+      <div class="tf-name">Morning Prep</div>
+      <div class="tf-signal" id="tf0">—</div>
+      <div class="tf-detail" id="tf0d">Daily bias</div>
+    </div>
+    <div class="tf-card">
+      <div class="tf-name">Intraday</div>
+      <div class="tf-signal" id="tf1">—</div>
+      <div class="tf-detail" id="tf1d">Session flow</div>
+    </div>
+    <div class="tf-card">
+      <div class="tf-name">Swing (3-5D)</div>
+      <div class="tf-signal" id="tf2">—</div>
+      <div class="tf-detail" id="tf2d">Multi-day view</div>
+    </div>
+    <div class="tf-card">
+      <div class="tf-name">Trend MA</div>
+      <div class="tf-signal" id="tf3">—</div>
+      <div class="tf-detail" id="tf3d">20 / 50 / 200</div>
+    </div>
+    <div class="tf-card">
+      <div class="tf-name">Momentum</div>
+      <div class="tf-signal" id="tf4">—</div>
+      <div class="tf-detail" id="tf4d">RSI + MACD</div>
+    </div>
+    <div class="tf-card">
+      <div class="tf-name">Macro</div>
+      <div class="tf-signal" id="tf5">—</div>
+      <div class="tf-detail" id="tf5d">Fed + events</div>
+    </div>
+  </div>
+
+  <!-- MAG 10 PANEL -->
+  <div class="mag10-panel">
+    <div class="mag10-hdr">
+      <span class="mag10-title">⬡ Mag 10 · NQ Movers · <span style="color:var(--bull);font-size:11px;">SPCX LIVE 🚀</span></span>
+      <span class="mag10-sub">NQ component stocks · price + % change</span>
+    </div>
+    <div class="mag10-grid" id="mag10Grid" role="list" aria-label="Magnificent 10 stock prices and percent changes"></div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottom-bar">
+    <span class="disclaimer" id="disclaimer">
+      FORECAST OS v1.0 · SIMULATED DATA — LIVE FEED COMING SOON · FOR ENTERTAINMENT &amp; EDUCATIONAL USE ONLY · NOT FINANCIAL ADVICE · FUTURES TRADING INVOLVES RISK
+    </span>
+    <div class="btn-group">
+      <button class="btn btn-outline" onclick="refreshData()">↺ REFRESH</button>
+      <button class="btn btn-primary" onclick="document.getElementById('subOverlay').classList.add('active')">SUBSCRIBE ✦</button>
+    </div>
+  </div>
+
+</div><!-- /terminal -->
+
+<script>
+// ── SYMBOL CONFIG ──────────────────────────────────────────────
+const SYMBOLS = {
+  NQ:  { label:'NQ / MNQ', name:'Nasdaq 100 Futures',  base:21840, atr:310,  tickSize:0.25 },
+  ES:  { label:'ES / MES', name:'S&P 500 E-Mini',       base:5920,  atr:68,   tickSize:0.25 },
+  MCL: { label:'MCL',      name:'Micro Crude Oil',       base:75.40, atr:1.85, tickSize:0.01, decimals:2 },
+  GC:  { label:'GC',       name:'Gold Futures',          base:4157,  atr:55,   tickSize:0.1  },
+  SI:  { label:'SI',       name:'Silver Futures',         base:32.80, atr:0.95, tickSize:0.005, decimals:3 },
+};
+
+const LOCKED = ['ES','MCL','GC','SI'];
+let currentSymbol = 'NQ';
+let chartInstance = null;
+let priceNow = SYMBOLS.NQ.base;
+
+// ── TAPE DATA ──────────────────────────────────────────────────
+const tapeSymbols = [
+  {sym:'NQ', base:21840}, {sym:'ES', base:5920},
+  {sym:'MCL', base:75.40, dec:2}, {sym:'GC', base:4157},
+  {sym:'SI', base:32.80, dec:3}, {sym:'RTY', base:2210},
+  {sym:'YM', base:43800},
+];
+
+function buildTape() {
+  const tape = document.getElementById('tapeScroll');
+  tape.innerHTML = tapeSymbols.map(s => {
+    const chg = (Math.random() - 0.47) * (s.base * 0.008);
+    const px = s.base + chg;
+    const pct = (chg / s.base * 100).toFixed(2);
+    const up = chg >= 0;
+    const dec = s.dec || 2;
+    return `<span class="tape-item">
+      <span class="tape-sym">${s.sym}</span>
+      <span class="tape-px">${px.toFixed(dec)}</span>
+      <span class="${up ? 'tape-up' : 'tape-dn'}">${up ? '▲' : '▼'}${Math.abs(pct)}%</span>
+    </span>`;
+  }).join('<span class="tape-item" style="color:var(--border-hi)">|</span>');
+}
+
+// ── FORECAST ENGINE ────────────────────────────────────────────
+function buildForecast(base, atr) {
+  const labels = ['NOW','1H','2H','4H','EOD','D+1','D+2','D+3','D+4'];
+  const drift = 0.00035;
+  const volFactor = atr / base;
+  const base_c=[], bull=[], bear=[], hi1=[], lo1=[], hi2=[], lo2=[];
+  for (let i = 0; i <= 8; i++) {
+    const t = i;
+    const mu = base * (1 + drift * t);
+    const sigma = base * volFactor * Math.sqrt(t + 0.25);
+    base_c.push(+mu.toFixed(2));
+    bull.push(+(mu + sigma * 1.28).toFixed(2));
+    bear.push(+(mu - sigma * 1.28).toFixed(2));
+    hi1.push(+(mu + sigma * 0.67).toFixed(2));
+    lo1.push(+(mu - sigma * 0.67).toFixed(2));
+    hi2.push(+(mu + sigma * 1.96).toFixed(2));
+    lo2.push(+(mu - sigma * 1.96).toFixed(2));
+  }
+  return { labels, base_c, bull, bear, hi1, lo1, hi2, lo2 };
+}
+
+// ── KEY LEVELS ─────────────────────────────────────────────────
+function buildLevels(base, atr) {
+  return [
+    { tag:'R3', val: base + atr*1.4,  cls:'lv-res' },
+    { tag:'R2', val: base + atr*0.85, cls:'lv-res' },
+    { tag:'R1', val: base + atr*0.38, cls:'lv-res' },
+    { tag:'POC',val: base + atr*0.06, cls:'lv-poc' },
+    { tag:'PVT',val: base,             cls:'lv-pvt' },
+    { tag:'S1', val: base - atr*0.34, cls:'lv-sup' },
+    { tag:'S2', val: base - atr*0.78, cls:'lv-sup' },
+    { tag:'S3', val: base - atr*1.35, cls:'lv-sup' },
+  ];
+}
+
+// ── BIAS ENGINE ────────────────────────────────────────────────
+function computeBias() {
+  const scenarios = [
+    { bull:64, bear:22, neu:14, score:'BULLISH',  col:'var(--bull)' },
+    { bull:55, bear:30, neu:15, score:'BULLISH',  col:'var(--bull)' },
+    { bull:28, bear:58, neu:14, score:'BEARISH',  col:'var(--bear)' },
+    { bull:35, bear:40, neu:25, score:'NEUTRAL',  col:'var(--amber)' },
+  ];
+  return scenarios[Math.floor(Math.random() * scenarios.length)];
+}
+
+// ── CHART BUILDER ──────────────────────────────────────────────
+function buildChart(fc) {
+  const ctx = document.getElementById('forecastChart').getContext('2d');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  const yMin = Math.min(...fc.lo2) - (Math.max(...fc.hi2) - Math.min(...fc.lo2)) * 0.08;
+  const yMax = Math.max(...fc.hi2) + (Math.max(...fc.hi2) - Math.min(...fc.lo2)) * 0.08;
+  // Simple level line drawer - runs after each chart render
+  const _lvPlugin = {
+    id:'lvLines',
+    afterDraw(ch){
+      if(!window._chartLevels) return;
+      const c=ch.ctx, ya=ch.scales.y, xa=ch.scales.x;
+      const L=xa.left, R=xa.right;
+      // Only extend 30% of chart width from left
+      const lineEnd = L + (R-L)*0.30;
+      const px=window._chartLevels[0]?window._chartLevels[0].val:0;
+      const atr=SYMBOLS[currentSymbol].atr;
+      const dec=SYMBOLS[currentSymbol].decimals||2;
+      c.save();
+      window._chartLevels.forEach(function(lv){
+        if(lv.val < ch.scales.y.min || lv.val > ch.scales.y.max) return;
+        const y=ya.getPixelForValue(lv.val);
+        const near=Math.abs(lv.val-window._chartPrice)<atr*0.35;
+        const col=lv.cls==='lv-res'?'#ff3b5c':lv.cls==='lv-sup'?'#00ff94':lv.cls==='lv-poc'?'#00d4ff':'#ffb800';
+        // Line
+        c.beginPath();
+        c.strokeStyle=col;
+        c.globalAlpha=near?0.85:0.35;
+        c.lineWidth=near?1.5:1;
+        c.setLineDash(near?[]:[3,3]);
+        c.moveTo(L,y);
+        c.lineTo(lineEnd,y);
+        c.stroke();
+        // Label — just the tag name, right at end of line
+        c.setLineDash([]);
+        c.globalAlpha=near?1:0.5;
+        c.font=(near?'bold ':'')+'11px JetBrains Mono,monospace';
+        c.fillStyle=col;
+        c.textAlign='left';
+        const val=lv.val.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+        c.fillText(lv.tag+' '+val, lineEnd+4, y+4);
+        c.globalAlpha=1;
+      });
+      c.restore();
+    }
+  };
+
+  chartInstance = new Chart(ctx, {
+    plugins:[_lvPlugin],
+    type: 'line',
+    data: {
+      labels: fc.labels,
+      datasets: [
+        {
+          label: '95% lo',
+          data: fc.lo2, fill: false,
+          borderColor: 'transparent', pointRadius: 0, tension: 0.45
+        },
+        {
+          label: 'Bull Zone',
+          data: fc.bull,
+          fill: '-1',
+          backgroundColor: 'rgba(0,255,148,0.07)',
+          borderColor: 'rgba(0,255,148,0.4)',
+          borderWidth: 1.5,
+          borderDash: [5,4],
+          pointRadius: 0, tension: 0.45
+        },
+        {
+          label: 'Inner hi',
+          data: fc.hi1, fill: false,
+          borderColor: 'transparent', pointRadius: 0, tension: 0.45
+        },
+        {
+          label: '68% Band',
+          data: fc.lo1,
+          fill: '-1',
+          backgroundColor: 'rgba(0,212,255,0.10)',
+          borderColor: 'transparent',
+          pointRadius: 0, tension: 0.45
+        },
+        {
+          label: 'Base Case',
+          data: fc.base_c,
+          fill: false,
+          borderColor: '#00d4ff',
+          borderWidth: 2.5,
+          pointRadius: [7, 3, 3, 3, 3, 3, 3, 3, 3],
+          pointBackgroundColor: '#00d4ff',
+          pointBorderColor: '#060810',
+          pointBorderWidth: 1.5,
+          tension: 0.45
+        },
+        {
+          label: 'Bear Zone',
+          data: fc.bear,
+          fill: 1,
+          backgroundColor: 'rgba(255,59,92,0.07)',
+          borderColor: 'rgba(255,59,92,0.4)',
+          borderWidth: 1.5,
+          borderDash: [5,4],
+          pointRadius: 0, tension: 0.45
+        },
+        {
+          label: '95% hi',
+          data: fc.hi2, fill: false,
+          borderColor: 'transparent', pointRadius: 0, tension: 0.45
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0d1e38',
+          borderColor: 'rgba(0,212,255,0.35)',
+          borderWidth: 1,
+          titleColor: '#00d4ff',
+          bodyColor: '#c8d8f0',
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+          bodyFont: { family: 'JetBrains Mono', size: 11 },
+          callbacks: {
+            label: ctx => {
+              if (['95% lo','Inner hi','95% hi'].includes(ctx.dataset.label)) return null;
+              const dec = SYMBOLS[currentSymbol].decimals || 2;
+              return ' ' + ctx.dataset.label + ': ' + ctx.raw.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(0,212,255,0.06)', lineWidth: 1 },
+          ticks: { color: 'rgba(0,212,255,0.5)', font: { family:'JetBrains Mono', size:10 }, maxRotation: 0 }
+        },
+        y: {
+          position: 'right',
+          min: yMin, max: yMax,
+          grid: { color: 'rgba(0,212,255,0.06)', lineWidth: 1 },
+          ticks: {
+            color: 'rgba(0,212,255,0.5)',
+            font: { family:'JetBrains Mono', size:10 },
+            callback: v => {
+              const dec = SYMBOLS[currentSymbol].decimals || 2;
+              return v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── MAIN RENDER ────────────────────────────────────────────────
+function render(sym) {
+  const cfg = SYMBOLS[sym];
+  const dec = cfg.decimals || 2;
+  const price = cfg.base + (Math.random() - 0.47) * cfg.atr * 0.4;
+  const chgPct = (Math.random() - 0.45) * 1.6;
+  const isUp = chgPct >= 0;
+  priceNow = price;
+
+  // Header
+  document.getElementById('tickerLbl').textContent = cfg.label;
+  document.getElementById('priceDisplay').textContent = price.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  const chgEl = document.getElementById('chgBadge');
+  chgEl.textContent = (isUp ? '+' : '') + chgPct.toFixed(2) + '%';
+  chgEl.className = 'chg-badge ' + (isUp ? 'chg-up' : 'chg-down');
+
+  // Timestamp
+  const now = new Date();
+  document.getElementById('timestamp').textContent =
+    now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) + '  CT';
+
+  // Forecast
+  const fc = buildForecast(price, cfg.atr);
+  const fcHi = Math.max(...fc.bull);
+  const fcLo = Math.min(...fc.bear);
+  const rng = fcHi - fcLo;
+
+  document.getElementById('fcHi').textContent = fcHi.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  document.getElementById('fcLo').textContent = fcLo.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  document.getElementById('rng').textContent = rng.toFixed(dec) + ' pts';
+  document.getElementById('atrVal').textContent = cfg.atr.toFixed(dec) + ' pts';
+
+  const volOver = Math.random() > 0.45;
+  const volPct = Math.round(Math.random() * 50 + 10);
+  const volEl = document.getElementById('volSig');
+  volEl.textContent = volOver ? 'HIGH +' + volPct + '%' : 'NORMAL';
+  volEl.style.color = volOver ? 'var(--amber)' : 'var(--bull)';
+
+  // Bias
+  const bias = computeBias();
+  document.getElementById('biasScore').textContent = bias.score;
+  document.getElementById('biasScore').style.color = bias.col;
+  document.getElementById('bullBar').style.width = bias.bull + '%';
+  document.getElementById('bearBar').style.width = bias.bear + '%';
+  document.getElementById('neuBar').style.width = bias.neu + '%';
+  document.getElementById('bullPct').textContent = bias.bull + '%';
+  document.getElementById('bearPct').textContent = bias.bear + '%';
+  document.getElementById('neuPct').textContent = bias.neu + '%';
+
+  // Levels
+  const levels = buildLevels(price, cfg.atr);
+  document.getElementById('levelsPanel').innerHTML = levels.map(l =>
+    const rowCls = l.cls==='lv-res'?'row-res':l.cls==='lv-sup'?'row-sup':l.cls==='lv-poc'?'row-poc':'row-pvt';
+    const tagCls = l.cls==='lv-res'?'lv-tag-res':l.cls==='lv-sup'?'lv-tag-sup':l.cls==='lv-poc'?'lv-tag-poc':'lv-tag-pvt';
+    `<div class="level-row ${rowCls}">
+      <span class="lv-tag ${tagCls}">${l.tag}</span>
+      <span class="${l.cls}">${l.val.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec})}</span>
+    </div>`
+  ).join('');
+
+  // Confluence
+  const bullConf = bias.score === 'BULLISH';
+  const items = [
+    { txt: 'Price ' + (isUp?'above':'below') + ' VWAP ' + (isUp?'+':'-') + Math.round(cfg.atr*0.08) + 'pts', bull: isUp },
+    { txt: (bullConf?'20MA > 50MA (bull cross)':'50MA > 20MA (bear cross)'), bull: bullConf },
+    { txt: 'RSI 14: ' + Math.round(50 + (Math.random()-0.4)*30) + (bullConf?' — trending':'  — watch OB'), bull: bullConf },
+    { txt: 'Volume ' + (volOver?'> avg +'+volPct+'% (inst. activity)':'at avg (neutral)'), bull: volOver },
+    { txt: 'Macro: Iran deal tailwind in play', bull: true },
+    { txt: 'Fed Warsh hawkish — rate hike risk', bull: false },
+  ];
+  document.getElementById('confPanel').innerHTML = items.map(i =>
+    `<div class="conf-line ${i.bull?'conf-bull':'conf-bear'}">${i.bull?'▲':'▼'} ${i.txt}</div>`
+  ).join('');
+
+  // TF Cards
+  const tfCards = [
+    { sig: bias.score,   cls: bias.score==='BULLISH'?'sig-bull':bias.score==='BEARISH'?'sig-bear':'sig-neu', detail: 'Open gap ' + (isUp?'up':' down') + ' expected' },
+    { sig: isUp?'LONG BIAS':'SHORT BIAS', cls: isUp?'sig-bull':'sig-bear', detail: 'VWAP ' + (isUp?'reclaim':'rejection') + ' play' },
+    { sig: bias.score==='BEARISH'?'NEUTRAL':'BULLISH', cls: bias.score==='BEARISH'?'sig-neu':'sig-bull', detail: 'Fed event risk present' },
+    { sig: bullConf?'BULLISH':'BEARISH', cls: bullConf?'sig-bull':'sig-bear', detail: bullConf?'Price > all MAs':'Price < 20MA' },
+    { sig: 'CAUTION', cls: 'sig-neu', detail: 'RSI approaching OB zone' },
+    { sig: 'MIXED',   cls: 'sig-neu', detail: 'Iran deal vs Fed hike' },
+  ];
+  tfCards.forEach((t, i) => {
+    const el = document.getElementById('tf' + i);
+    el.textContent = t.sig;
+    el.className = 'tf-signal ' + t.cls;
+    document.getElementById('tf' + i + 'd').textContent = t.detail;
+  });
+
+  // Store levels for chart plugin
+  window._chartLevels = levels;
+  window._chartPrice  = price;
+
+  // Store for level line plugin
+  window._chartLevels = levels;
+  window._chartPrice  = price;
+  window._chartATR    = cfg.atr;
+  window._chartDec    = cfg.decimals||2;
+
+  // Chart
+  buildChart(fc);
+}
+
+// ── SYMBOL SWITCH ──────────────────────────────────────────────
+function switchSymbol(sym) {
+  if (LOCKED.includes(sym)) {
+    document.getElementById('symbolSel').value = currentSymbol;
+    document.getElementById('subOverlay').classList.add('active');
+    return;
+  }
+  currentSymbol = sym;
+  render(sym);
+}
+
+// ── REFRESH ────────────────────────────────────────────────────
+function refreshData() {
+  render(currentSymbol);
+  buildTape();
+}
+
+// ── SUBSCRIPTION MODAL ─────────────────────────────────────────
+function selectPlan(el) {
+  document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function startTrial() {
+  alert('Trial coming soon! Connect your email via the stream chat to get early access.');
+  closeSub();
+}
+function closeSub() {
+  document.getElementById('subOverlay').classList.remove('active');
+}
+
+// ── CLOCK TICK ────────────────────────────────────────────────
+function tickClock() {
+  const now = new Date();
+  document.getElementById('timestamp').textContent =
+    now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) + '  CT';
+}
+
+// ── MAG 10 ENGINE ───────────────────────────────────────────────
+const MAG10 = [
+  { sym:'AAPL',  name:'Apple',      base:211.50, weight:'8.9%' },
+  { sym:'MSFT',  name:'Microsoft',  base:467.20, weight:'8.2%' },
+  { sym:'NVDA',  name:'Nvidia',     base:138.85, weight:'7.8%' },
+  { sym:'AMZN',  name:'Amazon',     base:224.30, weight:'5.6%' },
+  { sym:'META',  name:'Meta',       base:718.40, weight:'4.8%' },
+  { sym:'GOOGL', name:'Alphabet',   base:178.90, weight:'4.2%' },
+  { sym:'TSLA',  name:'Tesla',      base:342.60, weight:'3.9%' },
+  { sym:'SPCX',  name:'SpaceX',     base:165.00, weight:'🚀 NEW' },
+  { sym:'AMD',   name:'AMD',        base:168.40, weight:'Semi' },
+  { sym:'NFLX',  name:'Netflix',    base:1312.80,weight:'2.6%' },
+];
+
+// Simulate correlated moves — when NQ is bullish, stocks lean bullish too
+function buildMag10() {
+  const nqBias = document.getElementById('biasScore')?.textContent || 'NEUTRAL';
+  const bullLean = nqBias === 'BULLISH' ? 0.55 : nqBias === 'BEARISH' ? 0.42 : 0.50;
+
+  const grid = document.getElementById('mag10Grid');
+  if (!grid) return;
+
+  grid.innerHTML = MAG10.map(stock => {
+    // Correlated but independent — each stock has its own vol
+    const stockVol = stock.base * 0.012;
+    const drift = (Math.random() < bullLean ? 1 : -1) * Math.random() * stockVol * 0.4;
+    const px = stock.base + drift + (Math.random() - 0.5) * stockVol * 0.3;
+    const chgPct = (drift / stock.base) * 100;
+    const isUp = chgPct >= 0;
+
+    // Format price — stocks over $1000 show no cents on small display
+    const pxFmt = stock.base >= 1000
+      ? px.toLocaleString('en-US', { minimumFractionDigits:0, maximumFractionDigits:0 })
+      : px.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+    const extraClass = stock.sym === 'SPCX' ? ' spcx-card' : '';
+    return `<div class="mag10-card ${isUp?'bull-card':'bear-card'}${extraClass}" role="listitem" aria-label="${stock.name}: $${pxFmt}, ${isUp?'up':'down'} ${Math.abs(chgPct).toFixed(2)} percent">
+      <div class="mag10-sym">${stock.sym}</div>
+      <div class="mag10-px">$${pxFmt}</div>
+      <div class="mag10-chg ${isUp?'up':'dn'}">${isUp?'▲':'▼'}${Math.abs(chgPct).toFixed(2)}%</div>
+      <div class="mag10-weight">${stock.weight} QQQ</div>
+    </div>`;
+  }).join('');
+}
+
+// ── INIT ───────────────────────────────────────────────────────
+buildTape();
+render('NQ');
+buildMag10();
+setInterval(tickClock, 1000);
+setInterval(() => {
+  buildTape();
+}, 45000);
+setInterval(() => {
+  buildMag10();
+}, 30000);
+</script>
+<script>
+(function(){
+  if(!window.Chart) return;
+  Chart.register({
+    id:'lvLines',
+    afterDraw:function(ch){
+      if(!window._chartLevels||!window._chartLevels.length) return;
+      var c=ch.ctx,ya=ch.scales.y,xa=ch.scales.x;
+      var L=xa.left,R=xa.right;
+      var lineEnd=L+(R-L)*0.28;
+      var atr=window._chartATR||200;
+      var dec=window._chartDec||2;
+      c.save();
+      window._chartLevels.forEach(function(lv){
+        if(lv.val<ya.min||lv.val>ya.max) return;
+        var y=ya.getPixelForValue(lv.val);
+        var near=Math.abs(lv.val-(window._chartPrice||0))<atr*0.4;
+        var col=lv.cls==='lv-res'?'#ff3b5c':lv.cls==='lv-sup'?'#00ff94':lv.cls==='lv-poc'?'#00d4ff':'#ffb800';
+        c.beginPath();
+        c.strokeStyle=col;
+        c.globalAlpha=near?0.8:0.3;
+        c.lineWidth=near?1.5:0.8;
+        c.setLineDash(near?[]:[3,4]);
+        c.moveTo(L,y);c.lineTo(lineEnd,y);c.stroke();
+        c.setLineDash([]);
+        c.globalAlpha=near?0.95:0.45;
+        c.font=(near?'bold ':'')+'10px JetBrains Mono,monospace';
+        c.fillStyle=col;
+        c.textAlign='left';
+        var val=lv.val.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+        c.fillText(lv.tag+' '+val,lineEnd+3,y+4);
+        c.globalAlpha=1;
+      });
+      c.restore();
+    }
+  });
+  console.log('[LevelLines] Chart plugin registered');
+})();</script>
+<script>
+(function(){
+var s=document.createElement('style');
+s.innerHTML='.pa1{position:fixed;bottom:80px;right:24px;width:320px;background:#1a1400;border:2px solid #ffb800;border-radius:6px;padding:16px;z-index:99999;font-family:JetBrains Mono,monospace;color:#e0c060;font-size:13px;box-shadow:0 0 30px rgba(255,184,0,.3)}.pa2{position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg,#1a0800,#2a1000,#1a0800);border-bottom:3px solid #ff6600;padding:14px 24px;z-index:99999;font-family:JetBrains Mono,monospace;color:#ffa050;font-size:14px;font-weight:600;box-shadow:0 4px 40px rgba(255,102,0,.4)}.pa3{position:fixed;inset:0;background:rgba(6,0,0,.93);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:JetBrains Mono,monospace}.pa3-box{text-align:center;padding:40px;max-width:700px}.pa3-bob{font-size:90px;animation:pBob .4s ease-in-out infinite alternate;display:inline-block;transform-origin:bottom center;margin-bottom:12px}.pa3-title{color:#ff1a00;font-size:clamp(24px,4vw,40px);font-weight:900;margin-bottom:12px}.pa3-msg{color:#ffa090;font-size:16px;line-height:1.7;margin-bottom:20px}.pa3-warn{color:rgba(255,160,144,.6);font-size:12px;margin-bottom:28px}.pa-border{position:fixed;inset:0;border:4px solid #ff1a00;z-index:99998;animation:pFL .6s ease-in-out infinite;pointer-events:none}.pa-btn{font-family:JetBrains Mono,monospace;font-size:13px;font-weight:700;padding:12px 28px;border-radius:4px;cursor:pointer;margin:4px}@keyframes pBob{from{transform:rotate(-8deg)}to{transform:rotate(8deg) scale(1.12)}}@keyframes pFL{0%,100%{opacity:1;box-shadow:0 0 60px rgba(255,26,0,.5)}50%{opacity:.3}}';
+document.head.appendChild(s);
+function _rm(){var e=document.getElementById('_pa'),b=document.getElementById('_pb');if(e)e.remove();if(b)b.remove();}
+window.POTUSAlert={
+  test:function(n){this.fire(n,
+    n===1?'POTUS press conference in 30 min at 10AM ET. Tariff comments possible. Watch NQ and ES closely.':
+    n===2?'Breaking: POTUS posted on Truth Social re new tariff package. NQ and ES futures moving sharply.':
+    'Major unexpected executive action reported. NQ moving sharply. Extreme volatility. Consider flat until situation clears.',
+    n===1?'SCHEDULED SPEECH':n===2?'TAPE BOMB ALERT':'TAPE BOMB INCOMING');},
+  fire:function(n,msg,title){
+    _rm();var e=document.createElement('div');e.id='_pa';
+    if(n===1){
+      e.className='pa1';
+      e.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:22px">&#9888;&#65039;</span><b style="color:#ffb800;letter-spacing:.1em">'+(title||'HEADS UP')+'</b><button onclick="POTUSAlert.dismiss()" style="margin-left:auto;background:none;border:none;color:rgba(255,184,0,.5);font-size:18px;cursor:pointer">&#x2715;</button></div><div style="margin-bottom:12px">'+msg+'</div><button class="pa-btn" onclick="POTUSAlert.dismiss()" style="background:#ffb800;color:#1a0800;border:none">DISMISS</button>';
+    } else if(n===2){
+      e.className='pa2';
+      e.innerHTML='<div style="display:flex;align-items:center;gap:14px"><span style="background:#ff6600;color:#1a0800;font-size:11px;font-weight:700;padding:4px 12px;border-radius:3px;white-space:nowrap">&#128225; TAPE BOMB</span><span style="font-size:22px">&#127482;&#127480;</span><span style="flex:1">'+msg+'</span><span style="color:rgba(255,160,80,.7);white-space:nowrap">&#9889; HIGH VOL RISK</span><button onclick="POTUSAlert.dismiss()" style="background:none;border:none;color:#ff6600;font-size:20px;cursor:pointer;padding:0 4px">&#x2715;</button></div>';
+      setTimeout(function(){if(document.getElementById('_pa'))_rm();},5*60*1000);
+    } else if(n===3){
+      var border=document.createElement('div');border.id='_pb';border.className='pa-border';document.body.appendChild(border);
+      e.className='pa3';
+      e.innerHTML='<div class="pa3-box"><div class="pa3-bob">&#129312;</div><div class="pa3-title">'+(title||'TAPE BOMB')+'</div><div class="pa3-msg">'+msg+'</div><div class="pa3-warn">&#9888; EXTREME VOLATILITY &middot; CONSIDER FLAT &middot; FOR ENTERTAINMENT ONLY &middot; NOT FINANCIAL ADVICE</div><div><button class="pa-btn" onclick="POTUSAlert.dismiss()" style="background:rgba(255,26,0,.15);color:#ff6650;border:1px solid rgba(255,26,0,.4)">ACKNOWLEDGE &amp; DISMISS</button><button class="pa-btn" onclick="POTUSAlert.dismiss()" style="background:rgba(255,184,0,.12);color:#ffb800;border:1px solid rgba(255,184,0,.35)">GOT IT</button></div></div>';
+    }
+    document.body.appendChild(e);
+  },
+  dismiss:function(){_rm();}
+};
+var _fk={};
+setInterval(function(){
+  var t=new Date().getHours()*60+new Date().getMinutes();
+  [{h:9,m:0,lv:1,w:30,ti:'SCHEDULED SPEECH',ms:'POTUS remarks 10AM ET. Watch NQ/ES.'},{h:14,m:30,lv:1,w:30,ti:'PRESS CONFERENCE',ms:'WH briefing 3:30PM ET.'}].forEach(function(e){
+    var tE=e.h*60+e.m,k=e.h+':'+e.m;
+    if(t===tE-e.w&&!_fk[k+'w']){_fk[k+'w']=1;window.POTUSAlert.fire(e.lv,e.ms,e.ti,e.w);}
+    if(t===tE&&!_fk[k+'f']){_fk[k+'f']=1;window.POTUSAlert.fire(2,e.ms,'LIVE: '+e.ti);}
+  });
+},60000);
+console.log('[POTUSAlert] READY -- POTUSAlert.test(1), test(2), test(3)');
+})();</script>
+</body>
+</html>
